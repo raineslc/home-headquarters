@@ -1,0 +1,15 @@
+.env*
+!.env.example
+node_modules/
+dist/
+.sites-runtime/
+.wrangler/
+*.tar.gz
+.venv/
+__pycache__/
+*.pyc
+staticfiles/
+.local/
+*.sqlite3
+*.dump
+*.zip

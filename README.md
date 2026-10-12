@@ -114,4 +114,3 @@ is separate and requires paid PostgreSQL. Its restore drill is a release require
 The acceptance scenario is “Logan has a birthday party Saturday at 2 PM. We need a gift.”
 The assistant must clarify the date/end time/address and recipient age/budget as needed,
 propose the party and linked preparation tasks, and create nothing until approved.
-

@@ -1,0 +1,30 @@
+# User approved free deployment testing only. Not a production release.
+databases:
+  - name: home-headquarters-test-db
+    plan: free
+    region: virginia
+    postgresMajorVersion: '17'
+    ipAllowList: []
+services:
+  - type: web
+    name: home-headquarters-test
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py migrate_locked && gunicorn hq.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60
+    healthCheckPath: /health/
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: home-headquarters-test-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: BOOTSTRAP_TOKEN
+        generateValue: true
+      - key: OWNER_EMAIL
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.13.7
