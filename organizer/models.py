@@ -84,6 +84,7 @@ class Task(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     household = models.ForeignKey(Household, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
+    high_priority = models.BooleanField(default=False)
     assignee = models.ForeignKey(FamilyMember, null=True, blank=True, on_delete=models.SET_NULL)
     activity = models.ForeignKey(Activity, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
     due_date = models.DateField(null=True, blank=True)
@@ -93,7 +94,7 @@ class Task(models.Model):
     version = models.PositiveIntegerField(default=1)
 
     class Meta:
-        ordering = ['due_date', 'title']
+        ordering = ['-high_priority', 'due_date', 'title']
 
 class LunchPlan(models.Model):
     household = models.ForeignKey(Household, on_delete=models.CASCADE)

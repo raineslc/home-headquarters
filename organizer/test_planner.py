@@ -57,7 +57,42 @@ class PlannerTests(TestCase):
         self.assertEqual(LunchPlan.objects.filter(choice='pack').count(), 0)
         self.assertEqual(self.client.post('/lunches/undo/').status_code, 400)
         values['child'] = str(self.foreign.pk)
-        self.assertEqual(self.client.post('/lunches/', values).status_code, 404)
+        self.assertEqual(self.client.post('/lunches/?date=2026-10-12', values).status_code, 404)
+
+    def test_quick_forms_save_and_keep_invalid_input_on_overview(self):
+        values = {'quick_kind': 'activity', 'activity-title': 'Quick party', 'activity-start_date': '2026-10-17', 'activity-start_time': '14:00', 'activity-end_time': '16:00', 'activity-version': 0}
+        self.assertEqual(self.client.post('/', values).status_code, 302)
+        event = Activity.objects.get()
+        self.assertEqual(event.start_date, event.end_date)
+        self.assertEqual(event.household, self.house)
+        values['activity-end_time'] = '13:00'
+        response = self.client.post('/', values)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'The end must be after the start.')
+        self.assertEqual(Activity.objects.count(), 1)
+        response = self.client.post('/', {'quick_kind': 'task', 'task-title': 'Urgent prep', 'task-version': 0, 'task-high_priority': 'on', 'task-assignee': str(self.foreign.pk)})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Task.objects.exists())
+        self.assertEqual(self.client.post('/', {'quick_kind': 'task', 'task-title': 'Urgent prep', 'task-version': 0, 'task-high_priority': 'on'}).status_code, 302)
+        self.assertTrue(Task.objects.get().high_priority)
+
+    def test_priority_sorts_first_even_after_eight_ordinary_tasks(self):
+        for i in range(9):
+            Task.objects.create(household=self.house, title=f'Ordinary {i}', due_date='2026-10-01')
+        urgent = Task.objects.create(household=self.house, title='Urgent future', due_date='2027-01-01', high_priority=True)
+        self.assertEqual(list(self.client.get('/tasks/').context['tasks'])[0], urgent)
+        self.assertEqual(list(self.client.get('/?date=2026-10-12').context['priorities'])[0], urgent)
+
+    def test_month_lunch_selection_handles_leap_year_and_undo(self):
+        response = self.client.get('/lunches/?date=2028-02-15')
+        self.assertEqual(response.context['day'], date(2028, 2, 1))
+        self.assertIn(date(2028, 2, 29), response.context['days'])
+        self.assertEqual(len(response.context['days']), 21)
+        values = {'child': str(self.child.pk), 'all_month': '1', 'choice': 'school', 'version': 1}
+        self.assertEqual(self.client.post('/lunches/?date=2028-02-15', values).status_code, 302)
+        self.assertEqual(LunchPlan.objects.filter(choice='school').count(), 21)
+        self.assertEqual(self.client.post('/lunches/undo/').url, '/lunches/?date=2028-02-01')
+        self.assertFalse(LunchPlan.objects.filter(choice='school').exists())
 
     def test_all_day_multiday_and_dst_validation(self):
         values = self.activity_data()

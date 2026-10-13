@@ -1,0 +1,12 @@
+<details class="quick-panel" id="quick-activity" {% if quick_activity.is_bound %}open{% endif %}>
+<summary>+ Add activity</summary>
+<form method="post" class="quick-form">
+{% csrf_token %}<input type="hidden" name="quick_kind" value="activity">
+{{ quick_activity.non_field_errors }}{{ quick_activity.version }}
+<div class="quick-title">{{ quick_activity.title.errors }}{{ quick_activity.title.label_tag }}{{ quick_activity.title }}</div>
+<div>{{ quick_activity.start_date.errors }}{{ quick_activity.start_date.label_tag }}{{ quick_activity.start_date }}</div>
+<div>{{ quick_activity.start_time.errors }}{{ quick_activity.start_time.label_tag }}{{ quick_activity.start_time }}</div>
+<div>{{ quick_activity.end_time.errors }}{{ quick_activity.end_time.label_tag }}{{ quick_activity.end_time }}</div>
+<label class="checkbox-label">{{ quick_activity.all_day }} All day</label>
+<div class="quick-title form-actions"><button>Add activity</button><span class="caption">Add people, location, or notes after saving.</span></div>
+</form></details>

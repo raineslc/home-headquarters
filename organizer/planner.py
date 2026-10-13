@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from .models import Activity, FamilyMember, Household, LunchPlan, Task
-from .planner_forms import ActivityForm, MemberForm, TaskForm
+from .planner_forms import ActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm
 from .views import parent_only
 
 def chosen_date(request):
@@ -42,9 +42,43 @@ def lunch_rows(household, days):
         rows.append({'child': child, 'cells': [{'date': day, 'choice': plans[(child.id, day)].choice if (child.id, day) in plans else 'undecided', 'label': plans[(child.id, day)].get_choice_display() if (child.id, day) in plans else 'Not decided'} for day in days]})
     return rows
 
+def quick_entry(request, task_page=False):
+    kind = request.POST.get('quick_kind') if request.method == 'POST' else None
+    activity_form = QuickActivityForm(request.POST if kind == 'activity' else None, household=request.household, prefix='activity', initial={'start_date': chosen_date(request)})
+    task_form = QuickTaskForm(request.POST if kind == 'task' else None, household=request.household, prefix='task')
+    context = {'quick_activity': activity_form, 'quick_task': task_form}
+    if request.method != 'POST':
+        return context, None
+    if kind not in (('task',) if task_page else ('activity', 'task')):
+        return context, HttpResponse('Choose an activity or task.', status=400)
+    form = activity_form if kind == 'activity' else task_form
+    if form.is_valid():
+        with transaction.atomic():
+            household = Household.objects.select_for_update().get(pk=request.household.pk)
+            item = form.save(commit=False)
+            item.household = household
+            item.version = 1
+            if kind == 'activity':
+                item.end_date = item.start_date
+                item.timezone = household.timezone
+            item.save()
+            form.save_m2m()
+            bump(household)
+        messages.success(request, 'Activity added. Open it on the calendar to add more details.' if kind == 'activity' else 'Task added.')
+        target = reverse('tasks') if task_page else reverse('home')
+        if kind == 'activity':
+            target += '?date=' + item.start_date.isoformat()
+        elif request.GET.get('date'):
+            target += '?date=' + chosen_date(request).isoformat()
+        return context, redirect(target)
+    return context, None
+
 @parent_only
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def dashboard(request):
+    quick_context, response = quick_entry(request)
+    if response is not None:
+        return response
     day = chosen_date(request)
     today = timezone.localdate(timezone=ZoneInfo(request.household.timezone))
     mode = request.GET.get('view', 'week')
@@ -61,14 +95,14 @@ def dashboard(request):
     due_tasks = list(task_query.filter(completed_at__isnull=True, due_date__range=(start, end)))
     school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
     cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
-    priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True)).order_by('due_date', 'title')[:8]
+    priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True) | Q(high_priority=True)).order_by('-high_priority', 'due_date', 'title')[:8]
     today_events = Activity.objects.filter(household=request.household, start_date__lte=today, end_date__gte=today).prefetch_related('participants')
     if mode == 'month':
         previous = (first - timedelta(days=1)).replace(day=1)
         next_day = (first + timedelta(days=32)).replace(day=1)
     else:
         previous, next_day = day - timedelta(days=7), day + timedelta(days=7)
-    return render(request, 'planner/dashboard.html', {'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'priorities': priorities, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
+    return render(request, 'planner/dashboard.html', {**quick_context, 'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'priorities': priorities, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
 
 @parent_only
 @require_GET
@@ -76,13 +110,16 @@ def family(request):
     return render(request, 'planner/family.html', {'section': 'family', 'members': FamilyMember.objects.filter(household=request.household).order_by('archived', 'role', 'name')})
 
 @parent_only
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def tasks(request):
+    quick_context, response = quick_entry(request, task_page=True)
+    if response is not None:
+        return response
     status = request.GET.get('status', 'open')
     query = Task.objects.filter(household=request.household).select_related('assignee', 'activity')
     if status != 'all':
         query = query.filter(completed_at__isnull=status != 'done')
-    return render(request, 'planner/tasks.html', {'section': 'tasks', 'tasks': query, 'status': status, 'today': timezone.localdate(timezone=ZoneInfo(request.household.timezone))})
+    return render(request, 'planner/tasks.html', {**quick_context, 'section': 'tasks', 'tasks': query, 'status': status, 'today': timezone.localdate(timezone=ZoneInfo(request.household.timezone))})
 
 @parent_only
 @require_GET
@@ -167,15 +204,20 @@ def complete(request, pk):
 @require_http_methods(['GET', 'POST'])
 def lunches(request):
     day = chosen_date(request)
-    monday = day - timedelta(days=day.weekday())
-    days = [monday + timedelta(days=i) for i in range(5)]
+    first = day.replace(day=1)
+    month_days = [first + timedelta(days=i) for i in range(calendar.monthrange(day.year, day.month)[1])]
+    days = [d for d in month_days if d.weekday() < 5]
     if request.method == 'POST':
         try:
             chosen = sorted(set(date.fromisoformat(d) for d in request.POST.getlist('dates')))
         except ValueError:
             return HttpResponse('Choose valid school dates.', status=400)
+        if request.POST.get('all_month'):
+            chosen = days
         if not chosen or len(chosen) > 31 or any(d.weekday() > 4 for d in chosen):
             return HttpResponse('Select between 1 and 31 school days.', status=400)
+        if any(d not in days for d in chosen):
+            return HttpResponse('Select dates within the displayed month.', status=400)
         choice = request.POST.get('choice')
         if choice not in dict(LunchPlan._meta.get_field('choice').choices):
             return HttpResponse('Choose a lunch option.', status=400)
@@ -190,10 +232,10 @@ def lunches(request):
                 old.append({'date': day.isoformat(), 'choice': existing.choice if existing else 'undecided'})
                 LunchPlan.objects.update_or_create(household=household, child=child, date=day, defaults={'choice': choice})
             bump(household)
-            request.session['lunch_undo'] = {'household': str(household.pk), 'child': str(child.pk), 'version': household.version, 'old': old}
+            request.session['lunch_undo'] = {'household': str(household.pk), 'child': str(child.pk), 'version': household.version, 'old': old, 'month': first.isoformat()}
         messages.success(request, f'Lunch updated for {child.name}. You can undo this change below.')
-        return redirect(reverse('lunches') + '?date=' + monday.isoformat())
-    return render(request, 'planner/lunches.html', {'section': 'lunches', 'rows': lunch_rows(request.household, days), 'days': days, 'day': monday, 'previous': monday - timedelta(days=7), 'next': monday + timedelta(days=7), 'version': request.household.version, 'choices': LunchPlan._meta.get_field('choice').choices, 'undo': request.session.get('lunch_undo')})
+        return redirect(reverse('lunches') + '?date=' + first.isoformat())
+    return render(request, 'planner/lunches.html', {'section': 'lunches', 'rows': lunch_rows(request.household, days), 'days': days, 'day': first, 'previous': (first - timedelta(days=1)).replace(day=1), 'next': (first + timedelta(days=32)).replace(day=1), 'version': request.household.version, 'choices': LunchPlan._meta.get_field('choice').choices, 'undo': request.session.get('lunch_undo')})
 
 @parent_only
 @require_POST
@@ -211,10 +253,9 @@ def undo_lunch(request):
         bump(household)
     request.session.pop('lunch_undo', None)
     messages.success(request, 'Lunch change undone.')
-    return redirect('lunches')
+    return redirect(reverse('lunches') + '?date=' + undo.get('month', chosen_date(request).replace(day=1).isoformat()))
 
 @parent_only
 @require_GET
 def settings(request):
     return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household})
-

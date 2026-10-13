@@ -1,0 +1,11 @@
+<details class="quick-panel" id="quick-task" {% if quick_task.is_bound %}open{% endif %}>
+<summary>+ Add task</summary>
+<form method="post" class="quick-form">
+{% csrf_token %}<input type="hidden" name="quick_kind" value="task">
+{{ quick_task.non_field_errors }}{{ quick_task.version }}
+<div class="quick-title">{{ quick_task.title.errors }}{{ quick_task.title.label_tag }}{{ quick_task.title }}</div>
+<div>{{ quick_task.due_date.errors }}{{ quick_task.due_date.label_tag }}{{ quick_task.due_date }}</div>
+<div>{{ quick_task.assignee.errors }}{{ quick_task.assignee.label_tag }}{{ quick_task.assignee }}</div>
+<label class="checkbox-label quick-title">{{ quick_task.high_priority }} High priority</label>
+<div class="quick-title"><button>Add task</button></div>
+</form></details>

@@ -28,7 +28,8 @@ class ActivityForm(VersionForm):
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, household=household, **kwargs)
         included = self.instance.participants.values_list('pk', flat=True) if not self.instance._state.adding else []
-        self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
+        if 'participants' in self.fields:
+            self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
 
     def clean(self):
         data = super().clean()
@@ -59,7 +60,7 @@ class ActivityForm(VersionForm):
 class TaskForm(VersionForm):
     class Meta:
         model = Task
-        fields = ['title', 'assignee', 'due_date', 'due_time', 'activity', 'notes']
+        fields = ['title', 'high_priority', 'assignee', 'due_date', 'due_time', 'activity', 'notes']
         widgets = {'due_date': forms.DateInput(attrs={'type': 'date'}), 'due_time': forms.TimeInput(attrs={'type': 'time'}), 'notes': forms.Textarea(attrs={'rows': 3})}
         labels = {'activity': 'Preparation for activity', 'assignee': 'Responsible person'}
 
@@ -67,10 +68,24 @@ class TaskForm(VersionForm):
         super().__init__(*args, household=household, **kwargs)
         self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk=self.instance.assignee_id)).order_by('name')
         self.fields['assignee'].empty_label = 'Household'
-        self.fields['activity'].queryset = Activity.objects.filter(household=household)
+        if 'activity' in self.fields:
+            self.fields['activity'].queryset = Activity.objects.filter(household=household)
 
     def clean(self):
         data = super().clean()
         if data.get('due_time') and not data.get('due_date'):
             self.add_error('due_date', 'Choose a date for this deadline.')
         return data
+
+class QuickActivityForm(ActivityForm):
+    class Meta(ActivityForm.Meta):
+        fields = ['title', 'start_date', 'start_time', 'end_time', 'all_day']
+        labels = {'start_date': 'Date'}
+
+    def clean(self):
+        self.cleaned_data['end_date'] = self.cleaned_data.get('start_date')
+        return super().clean()
+
+class QuickTaskForm(TaskForm):
+    class Meta(TaskForm.Meta):
+        fields = ['title', 'due_date', 'assignee', 'high_priority']
