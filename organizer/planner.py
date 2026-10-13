@@ -59,16 +59,16 @@ def dashboard(request):
     events = list(Activity.objects.filter(household=request.household, start_date__lte=end, end_date__gte=start).prefetch_related('participants'))
     task_query = Task.objects.filter(household=request.household).select_related('assignee', 'activity')
     due_tasks = list(task_query.filter(completed_at__isnull=True, due_date__range=(start, end)))
-    cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d]} for d in days]
+    school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
+    cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
     priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True)).order_by('due_date', 'title')[:8]
-    upcoming_events = Activity.objects.filter(household=request.household, start_date__lte=today + timedelta(days=6), end_date__gte=today).prefetch_related('participants')
-    upcoming_tasks = task_query.filter(completed_at__isnull=True, due_date__range=(today, today + timedelta(days=6)))
+    today_events = Activity.objects.filter(household=request.household, start_date__lte=today, end_date__gte=today).prefetch_related('participants')
     if mode == 'month':
         previous = (first - timedelta(days=1)).replace(day=1)
         next_day = (first + timedelta(days=32)).replace(day=1)
     else:
         previous, next_day = day - timedelta(days=7), day + timedelta(days=7)
-    return render(request, 'planner/dashboard.html', {'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'priorities': priorities, 'upcoming_events': upcoming_events, 'upcoming_tasks': upcoming_tasks, 'today_events': [e for e in upcoming_events if e.start_date <= today <= e.end_date], 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child'), 'members': FamilyMember.objects.filter(household=request.household, archived=False), 'lunch_rows': lunch_rows(request.household, [monday + timedelta(days=i) for i in range(5)])})
+    return render(request, 'planner/dashboard.html', {'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'priorities': priorities, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
 
 @parent_only
 @require_GET
@@ -217,3 +217,4 @@ def undo_lunch(request):
 @require_GET
 def settings(request):
     return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household})
+
