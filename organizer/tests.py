@@ -31,7 +31,7 @@ class FoundationTests(TestCase):
         response = self.client.post('/sign-in/', {'username': 'PARENT@example.test', 'password': 'Test-only-passphrase-482!'})
         self.assertRedirects(response, '/', fetch_redirect_response=False)
         self.client.post('/foundation/records/', {'title': 'Record survives a second request', 'household_id': str(self.other_house.id)})
-        self.assertContains(self.client.get('/'), 'Record survives a second request')
+        self.assertContains(self.client.get('/foundation/'), 'Record survives a second request')
         self.assertEqual(SetupRecord.objects.get().household_id, self.house.id)
 
     def test_households_cannot_read_each_other(self):
