@@ -1,13 +1,14 @@
 # Home Headquarters
 
-A new, private family organizer. **Current milestone: deployment foundation only.**
+A new, private family organizer. **Current milestone: working organizer preview.**
 
 ## Release status
 
-Not a production release. Calendar, family invitations, lunch planning, Google Calendar,
-AI proposals, and delivered reminders are not implemented yet. These must follow a
-verified deployed sign-in, persisted record, and recovery test. Do not enter important
-family data in the free testing environment.
+Not a production release. Local calendar views, one-off activities, linked tasks,
+editable family profiles, and weekly lunch planning are available. Parent invitations,
+recurrence, Google Calendar, AI proposals, full planner recovery, and delivered reminders
+remain outstanding. See docs/preview.md. Do not use the free testing environment as
+the only copy of important family plans.
 
 ## Architecture
 

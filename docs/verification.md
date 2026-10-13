@@ -18,7 +18,7 @@ Do not infer completion from a build or a screenshot.
 | Real owner sign-in | Verified in deployed browser as Chris Raines, household Raines |
 | Persist and retrieve record | Verified: created a deployment note and retrieved it after reload |
 | Isolated deployed recovery | Pending |
-| Browser accessibility/responsive QA | Pending |
+| Browser accessibility/responsive QA | Desktop dashboard and lunch layout checked. Phone viewport override had no effect; mobile visual QA remains pending |
 | Unattended scheduler execution | Pending paid scheduling approval |
 | Reminder delivery while app closed | Not implemented; unverified |
 | Calendar synchronization | Not implemented; unverified |
@@ -30,3 +30,12 @@ Test URL: https://home-headquarters-test.onrender.com
 Free PostgreSQL 17 instance: dpg-db6prh0n74is738hk9s0-a. It expires November 11, 2026 at 9:56 PM America/New_York (November 12 at 02:56 UTC). Do not treat the free database as long-term storage.
 
 OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through the Render connector, preserving existing secrets, and deployment dep-db6q17aj9qps73a2m27g was triggered. First-user setup remains pending. No paid scheduler was created.
+
+## Organizer preview verification
+
+- First-user setup subsequently completed by Chris. Browser sign-in and record persistence verified.
+- PostgreSQL CI run 38399801696 passed for commit c69a33728e9208a71eb8fe1f618b0102944a9762.
+- Render deployment dep-db72go942hec73f56kng is live with migration 0002.
+- Chris, Melissa, Logan and Henry were created through the live family form using the user-provided names and roles; these are editable database records, not schema fixtures.
+- Live lunch test applied Pack lunch to October 13 and 14 for Henry, verified Today, then used Undo. Both dates returned to Not decided.
+- No sample activities/tasks were added to the real household. Their workflows were verified with isolated PostgreSQL test data in CI.
