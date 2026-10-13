@@ -82,3 +82,8 @@ class PlannerTests(TestCase):
         self.child.refresh_from_db()
         self.assertTrue(self.child.archived)
         self.assertEqual(Activity.objects.get().participants.count(), 1)
+        event = Activity.objects.get()
+        values = self.activity_data()
+        values['version'] = event.version
+        self.assertEqual(self.client.post(f'/plan/activity/{event.pk}/edit/', values).status_code, 302)
+        self.assertEqual(event.participants.count(), 1)

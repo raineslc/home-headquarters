@@ -1,6 +1,7 @@
 from datetime import datetime, timezone as utc_timezone
 from zoneinfo import ZoneInfo
 from django import forms
+from django.db.models import Q
 from .models import Activity, FamilyMember, Task
 
 class VersionForm(forms.ModelForm):
@@ -26,7 +27,8 @@ class ActivityForm(VersionForm):
 
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, household=household, **kwargs)
-        self.fields['participants'].queryset = FamilyMember.objects.filter(household=household, archived=False).order_by('name')
+        included = self.instance.participants.values_list('pk', flat=True) if not self.instance._state.adding else []
+        self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
 
     def clean(self):
         data = super().clean()
@@ -63,7 +65,7 @@ class TaskForm(VersionForm):
 
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, household=household, **kwargs)
-        self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household, archived=False).order_by('name')
+        self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk=self.instance.assignee_id)).order_by('name')
         self.fields['assignee'].empty_label = 'Household'
         self.fields['activity'].queryset = Activity.objects.filter(household=household)
 

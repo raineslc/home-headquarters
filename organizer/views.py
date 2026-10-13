@@ -123,7 +123,7 @@ def records(request):
         household.version += 1
         household.save(update_fields=['version'])
     messages.success(request, 'Note saved to your household.')
-    return redirect('home')
+    return redirect('foundation')
 
 @parent_only
 @require_GET
@@ -168,7 +168,7 @@ def restore(request):
             household.save(update_fields=['version'])
         request.session.pop('restore_preview', None)
         messages.success(request, 'Notes restored. A recovery copy was saved before replacement.')
-        return redirect('home')
+        return redirect('foundation')
     return render(request, 'restore.html', {'form': form})
 
 @parent_only
