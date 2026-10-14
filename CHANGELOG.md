@@ -4,6 +4,15 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — App version in Settings
+
+- Author: Claude Code. Task: OPS-01 (owner request).
+- Settings shows the running commit (from Render's RENDER_GIT_COMMIT, linked to GitHub), its
+  branch and when the server started, so a merge that did not deploy is easy to spot.
+- Context: PRs 5 and 6 merged with passing CI but Render started no deploys; a manual deploy
+  of 790fc54 (dep-db7ttngm7kps73ct3t4g) brought the site up to date.
+- Validation: 90 organizer tests on local isolated PostgreSQL.
+
 ## 2026-10-14 — Family Google calendar (writes)
 
 - Author: Claude Code. Task: GGL-02 (implemented; live verification pending).

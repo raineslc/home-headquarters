@@ -410,7 +410,8 @@ def undo_lunch(request):
 @parent_only
 @require_GET
 def settings(request):
-    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household})
+    from .version import info
+    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household, 'version': info()})
 
 BULK_MAX_DATES = 60
 BULK_MAX_DAYS = 120

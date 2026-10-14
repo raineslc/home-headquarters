@@ -46,6 +46,9 @@ participation. No further approval is needed merely to develop reversible local 
   isolated hosted environment (never the live household) to confirm. Known limit: AI plan
   generation does not bump the household version, so a generation finishing mid-restore is
   not detected as a stale preview; the restore still succeeds atomically.
+- [x] OPS-01 Settings → App version shows the running commit (linked to GitHub) and server start
+  time, so a missed deploy is visible (owner request, Claude Code, after PRs 5 and 6 merged on
+  October 14 without Render starting deploys; fixed by manual deploy dep-db7ttngm7kps73ct3t4g).
 - [x] FND-04 Source in private GitHub; environment recreation and secret-name-only example.
   Local source bundle exists separately. Neither is a household-data backup.
 
@@ -183,12 +186,12 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: GGL-02 family Google calendar writes (migration 0009).
+- Assistant: Claude Code. Change: GGL-02 family Google calendar writes (migration 0009) and OPS-01.
   AI-04 (PR 6) merged earlier the same day.
 - Starting canonical GitHub commit: `790fc54b622eac38df1ac960511f1ecdb80169c2` (merged PR 6); branch `ggl-02-google-writes`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 89 organizer
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 90 organizer
   tests passed (Google calls simulated), deploy check and migration drift check passed; local
   visual check of the Google sections. No real Google calendar was created or changed.
   CI status for the pushed branches is reported in the handoff.

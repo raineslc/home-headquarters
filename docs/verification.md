@@ -88,3 +88,9 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Ten tests with a simulated Google Calendar API (IDs, ETags, If-Match, duplicates, deletions, outages): read-only until opt-in and earlier grants kept; incremental consent creates the app calendar; create/edit/untick/never-sent; retry after a lost reply does not duplicate; Google-side edits become conflicts and are only overwritten by choice; deleted-in-Google re-add and unlink; local deletes and queued retries; repeating series RRULE/EXDATE and changed occurrences; cached copies not shown twice; permission loss, restore and stop leave Google untouched; household and owner scoping. 89 organizer tests passed locally.
 - Visual check of the activity Google status (conflict) and the family calendar section on a local test database with simulated state.
 - Not yet verified: no real Google calendar was created. Requires adding the calendar.app.created scope in Google Cloud, deploying, a parent opting in, and a real create/edit/delete plus sharing with the other parent.
+
+## Deployment incident and app version (OPS-01), October 14, 2026 — Claude Code
+
+- PRs 5 (eb4ffe6) and 6 (790fc54) merged with passing main CI, but Render recorded no deploy events for them; the live deploy stayed at PR 4 (dep-db7t75tbedkc73eq1ll0). The free service also stalled on wake-up with no app logs after 19:45 UTC and no failure events.
+- With owner approval, a manual Render deploy of 790fc54 (dep-db7ttngm7kps73ct3t4g) went live at 19:59 UTC; the signed-in Overview loaded with task priority filters. Only viewed; no household data changed.
+- Settings now shows the running commit and server start time (test added; 90 organizer tests passed locally).
