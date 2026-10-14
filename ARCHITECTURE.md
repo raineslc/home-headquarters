@@ -12,7 +12,8 @@ Render's root render.yaml provisions the free preview web service and database. 
 installs requirements and collects static assets. Startup runs migrate_locked under a
 PostgreSQL advisory lock, then Gunicorn. GitHub Actions runs deployment checks, migration
 drift checks, static collection and all organizer tests against disposable PostgreSQL 17.
-Auto-deploy waits for successful checks. render.production-proposal.yaml is unapproved.
+A deploy job in the same workflow calls Render's deploy hook after checks pass on main;
+Render auto-deploy is off. render.production-proposal.yaml is unapproved.
 run_jobs currently implements a locked/deduplicated heartbeat only; no real reminder queue.
 
 ## Code map

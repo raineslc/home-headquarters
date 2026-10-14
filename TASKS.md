@@ -50,6 +50,10 @@ participation. No further approval is needed merely to develop reversible local 
 - [x] OPS-01 Settings → App version shows the running commit (linked to GitHub) and server start
   time, so a missed deploy is visible (owner request, Claude Code, after PRs 5 and 6 merged on
   October 14 without Render starting deploys; fixed by manual deploy dep-db7ttngm7kps73ct3t4g).
+- [ ] OPS-02 Reliable deploys (Claude Code, owner request): GitHub Actions `deploy` job calls the
+  Render deploy hook (secret RENDER_DEPLOY_HOOK, added by the owner) after checks pass on main;
+  render.yaml sets autoDeployTrigger off. Pending: first hook deploy confirmed live, and Render's
+  service setting showing Auto-Deploy off (Blueprint sync or dashboard).
 - [x] FND-04 Source in private GitHub; environment recreation and secret-name-only example.
   Local source bundle exists separately. Neither is a household-data backup.
 

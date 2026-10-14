@@ -14,7 +14,8 @@ services:
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
     startCommand: python manage.py migrate_locked && gunicorn hq.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60
     healthCheckPath: /health/
-    autoDeployTrigger: checksPass
+    # Deploys come from the GitHub Actions deploy job (deploy hook) after checks pass on main.
+    autoDeployTrigger: 'off'
     envVars:
       - key: DATABASE_URL
         fromDatabase:

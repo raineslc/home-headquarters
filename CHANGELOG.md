@@ -4,6 +4,15 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Deploy from GitHub Actions
+
+- Author: Claude Code. Task: OPS-02 (owner request).
+- Render missed deploys for PRs 5, 6 and 8 and later refused a manual deploy (503, deploys
+  unavailable). The workflow now has a `deploy` job that calls Render's deploy hook after all
+  checks pass on main, with retries; render.yaml turns Render auto-deploy off.
+- Validation: workflow reviewed; deploy job runs only for pushes to main. First live run is
+  recorded in docs/verification.md.
+
 ## 2026-10-14 — Installable Android app and phone layout
 
 - Author: Claude Code. Tasks: APP-01 (owner request), QA-02 phone pass.
