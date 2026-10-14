@@ -101,3 +101,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Headless Edge (fresh temporary profile) against a local test database: service worker active at scope /, cache holds only hashed static files and /offline/, Page.getInstallabilityErrors returned none, and with the server stopped a family page showed "You're offline". The Claude desktop browser pane cannot register service workers, so this check used Edge.
 - Every page audited at 375px width: no horizontal overflow; fixed tap targets, navigation and calendar layout as listed in QA-02. Desktop layout rechecked unchanged.
 - Not yet verified: installing on a real Android phone from the deployed site.
+
+## Deploy hook (OPS-02), October 14, 2026 — Claude Code
+
+- PR 8 (f4daa8d) merged with passing main CI (run 38640758647) but Render recorded no deploy or event. A manual deploy request then returned 503 "deploys is currently unavailable".
+- The owner added the RENDER_DEPLOY_HOOK repository secret. The workflow deploy job calls it after checks pass on main; the first run's outcome is recorded below when confirmed.

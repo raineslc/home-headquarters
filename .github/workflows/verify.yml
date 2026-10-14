@@ -27,3 +27,22 @@ jobs:
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py collectstatic --noinput
       - run: python manage.py test organizer --noinput
+  deploy:
+    # Render's automatic GitHub deploys were missed several times (October 14), so main deploys
+    # explicitly after the checks above pass. The hook URL is a repository secret.
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: false
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK secret is not set"; exit 1
+          fi
+          curl --fail --silent --show-error --retry 4 --retry-delay 20 --retry-all-errors -X POST "$RENDER_DEPLOY_HOOK" -o /dev/null
+          echo "Render deploy requested for ${GITHUB_SHA::7}."

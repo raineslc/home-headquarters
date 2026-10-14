@@ -72,7 +72,10 @@ chooses their password directly in the application. Never paste passwords or cod
 chat, source, shell command arguments, or URLs. After setup, remove `BOOTSTRAP_TOKEN`
 from hosting and deploy again. Setup also remains closed in the database.
 
-`autoDeployTrigger: checksPass` prevents later deployments until repository checks pass.
+Deploys run from GitHub Actions: after every check passes on `main`, the `deploy` job calls
+Render's deploy hook (repository secret `RENDER_DEPLOY_HOOK`). Render's own auto-deploy is
+off (`autoDeployTrigger: 'off'`) because it missed several merges. Settings → App version
+shows the running commit; if a merge does not appear, check the Actions run's deploy job.
 The free web service applies migrations under a database lock before starting. Paid
 hosting moves that operation into the pre-deploy phase.
 
