@@ -8,8 +8,11 @@ load_dotenv(BASE_DIR / '.env.local', override=False)
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 DEBUG = False
 ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
-if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
-    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
+# APP_HOSTNAME is the public host on any platform (Cloud Run sets it at deploy); Render sets its own.
+for name in ('APP_HOSTNAME', 'RENDER_EXTERNAL_HOSTNAME'):
+    if os.getenv(name):
+        ALLOWED_HOSTS.append(os.environ[name])
+CSRF_TRUSTED_ORIGINS = ['https://' + host for host in ALLOWED_HOSTS if host not in ('localhost', '127.0.0.1')]
 INSTALLED_APPS = ['django.contrib.auth', 'django.contrib.contenttypes',
                  'django.contrib.sessions', 'django.contrib.messages',
                  'django.contrib.staticfiles', 'organizer']
@@ -64,7 +67,8 @@ SESSION_COOKIE_SECURE = SECURE
 CSRF_COOKIE_SECURE = SECURE
 SECURE_SSL_REDIRECT = SECURE
 SECURE_HSTS_SECONDS = 31536000 if SECURE else 0
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if os.getenv('RENDER') else None
+# Render and Cloud Run (K_SERVICE) terminate HTTPS at their proxy and forward the original scheme.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if os.getenv('RENDER') or os.getenv('K_SERVICE') else None
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024

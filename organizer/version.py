@@ -7,6 +7,7 @@ REPOSITORY = 'https://github.com/raineslc/home-headquarters'
 STARTED = timezone.now()
 
 def info():
-    commit = os.getenv('RENDER_GIT_COMMIT', '')
+    # APP_COMMIT is set by the Cloud Run deploy; Render provides RENDER_GIT_COMMIT.
+    commit = os.getenv('APP_COMMIT') or os.getenv('RENDER_GIT_COMMIT', '')
     return {'commit': commit[:7], 'commit_url': f'{REPOSITORY}/commit/{commit}' if commit else '',
-            'branch': os.getenv('RENDER_GIT_BRANCH', ''), 'started': STARTED}
+            'branch': os.getenv('APP_BRANCH') or os.getenv('RENDER_GIT_BRANCH', ''), 'started': STARTED}

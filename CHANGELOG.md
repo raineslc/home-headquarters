@@ -4,6 +4,19 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Preparing the move to Cloud Run + Neon
+
+- Author: Claude Code. Task: FND-03 (owner approved Cloud Run + Neon, free address for now).
+- Dockerfile (Python 3.13.7, static files collected at build, non-root user); settings no
+  longer assume Render (APP_HOSTNAME, CSRF trusted origins, proxy header on Cloud Run, APP_COMMIT
+  for the version display). CI now builds the container on every run.
+- Deploy job for Cloud Run using Workload Identity Federation, Artifact Registry and a
+  migration job; it takes over from the Render job once the GCP_* repository variables exist.
+- Cloud Shell scripts for one-time Google Cloud setup and a verified database copy, and the
+  runbook docs/HOSTING.md.
+- Validation: 94 organizer tests locally; workflow YAML parsed; scripts syntax-checked. The
+  container build is checked by CI; nothing is deployed until the owner completes setup.
+
 ## 2026-10-14 — Deploy from GitHub Actions
 
 - Author: Claude Code. Task: OPS-02 (owner request).
