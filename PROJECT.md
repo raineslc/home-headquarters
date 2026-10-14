@@ -46,6 +46,8 @@ requirements, not optional polish.
   the daily overview. Lunches uses a full month of school-day dates with bulk choices/undo.
 - High-priority tasks appear first. Keep household and participant/source colors distinct.
 - Phone and desktop support, keyboard access, labels, contrast, loading/empty/error states.
+- Installable on Android (owner request): phones get a bottom tab bar; the week view lists days
+  top to bottom; the app never stores family pages on the phone.
 
 ## Primary acceptance scenario
 

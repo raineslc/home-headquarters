@@ -94,3 +94,10 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - PRs 5 (eb4ffe6) and 6 (790fc54) merged with passing main CI, but Render recorded no deploy events for them; the live deploy stayed at PR 4 (dep-db7t75tbedkc73eq1ll0). The free service also stalled on wake-up with no app logs after 19:45 UTC and no failure events.
 - With owner approval, a manual Render deploy of 790fc54 (dep-db7ttngm7kps73ct3t4g) went live at 19:59 UTC; the signed-in Overview loaded with task priority filters. Only viewed; no household data changed.
 - Settings now shows the running commit and server start time (test added; 90 organizer tests passed locally).
+
+## Installable Android app and phone pass (APP-01, QA-02), October 14, 2026 — Claude Code
+
+- Four tests: public manifest with existing icons and shortcuts, service worker caches only static files and the offline page, the offline page contains no household data even when signed in, and pages link the manifest with the install banner hidden until offered. 94 organizer tests passed locally.
+- Headless Edge (fresh temporary profile) against a local test database: service worker active at scope /, cache holds only hashed static files and /offline/, Page.getInstallabilityErrors returned none, and with the server stopped a family page showed "You're offline". The Claude desktop browser pane cannot register service workers, so this check used Edge.
+- Every page audited at 375px width: no horizontal overflow; fixed tap targets, navigation and calendar layout as listed in QA-02. Desktop layout rechecked unchanged.
+- Not yet verified: installing on a real Android phone from the deployed site.

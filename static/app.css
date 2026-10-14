@@ -10,3 +10,43 @@
 .bulk-dates{border:1px solid #e0e6e1;border-radius:8px;padding:14px 16px;margin:0 0 20px}.bulk-dates legend{font-weight:600;font-size:14px;padding:0 6px}.bulk-range{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}.bulk-range label{display:flex;flex-direction:column;font-size:13px;gap:4px}.bulk-grid-scroll{overflow-x:auto;margin-top:10px}.bulk-grid{border-collapse:collapse;width:100%;table-layout:fixed}.bulk-grid th{padding:4px 2px}.weekday-toggle{font-size:12px;padding:4px 6px;min-height:32px;width:100%}.bulk-grid td{padding:2px;text-align:center}.bulk-day{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #e1e7dd;border-radius:6px;min-height:40px;font-size:13px;cursor:pointer}.bulk-day small{font-size:10px;color:#58685d}.bulk-day:has(input:checked){border-color:#387853;background:#f3f8f0}.bulk-day input[type=checkbox]{margin:0;width:16px;height:16px;min-height:16px}.bulk-review{padding-left:20px}.bulk-review li{padding:8px 0;border-top:1px solid #e8ede9;display:flex;flex-direction:column;gap:3px;font-size:14px}.bulk-review .muted{font-size:12px}.bulk-summary{margin-bottom:12px}.error-notice{background:#fbeeea;color:#8a3428}
 @media(max-width:580px){.bulk-dates{padding:10px 6px}.bulk-day{flex-direction:column;gap:2px;font-size:12px;min-height:46px}.bulk-day small{display:none}.weekday-toggle{font-size:11px;padding:4px 0}}
 .google-status{border:1px solid #e0e6e1;border-radius:8px;padding:10px 14px;margin:16px 0;font-size:13px}.google-status p{margin:0 0 6px}.google-failed,.google-conflict,.google-removed{border-color:#e7c3bb;background:#fbf3f1}.inline-actions{display:flex;flex-wrap:wrap;gap:10px}.family-calendar form{margin:10px 0}
+.install-banner{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#eef6eb;border:1px solid #d4e6d6;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px}.install-banner span{flex:1 1 220px}.install-banner[hidden],[data-install-ready][hidden],[data-installed][hidden]{display:none}.offline-card{margin-top:40px}
+/* Phone layout (QA-02 mobile pass). Desktop rules above are unchanged. */
+.nav-icon{display:none}
+@media(max-width:580px){
+  body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+  .main-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:0 0 env(safe-area-inset-bottom);background:#fff;border-top:1px solid #e1e7e2;border-bottom:0;box-shadow:0 -2px 8px #1a3a2610;overflow:visible}
+  .main-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:6px 0;font-size:10.5px;border-bottom:0;border-top:2px solid transparent;white-space:nowrap}
+  .main-nav a[aria-current]{border-top-color:#226344;border-bottom-color:transparent;background:#f3f8f4}
+  .nav-icon{display:block;width:22px;height:22px}
+  .page-heading{flex-wrap:wrap}
+  .page-heading>a{padding:10px 0}
+  /* Week: days stacked top to bottom instead of a sideways grid. */
+  .calendar-grid.week{grid-template-columns:1fr;min-width:0}
+  .calendar-grid.week .day-cell{min-height:0;display:grid;grid-template-columns:46px minmax(0,1fr);column-gap:12px;row-gap:6px;align-items:start;border-right:0;padding:10px 12px}
+  .calendar-grid.week .day-heading{grid-column:1;grid-row:1;margin:0}
+  .calendar-grid.week .day-cell>:not(.day-heading){grid-column:2;margin:0;min-width:0;max-width:none}
+  .calendar-grid.week .empty-day{margin:12px 0 0;text-align:left}
+  /* Month: all seven days fit; entries shrink to one line. */
+  .calendar-grid.month{grid-template-columns:repeat(7,minmax(0,1fr));min-width:0}
+  .month .day-cell{min-height:76px;padding:4px 2px}
+  .month .day-heading{justify-content:center;font-size:10px}
+  .month .day-heading span{display:none}
+  .month .day-cell:nth-child(-n+7) .day-heading{flex-direction:column;gap:0}
+  .month .day-cell:nth-child(-n+7) .day-heading span{display:block}
+  .month .day-heading a{min-width:30px;min-height:30px;font-size:13px}
+  .month .event,.month .calendar-task,.month .calendar-lunch{font-size:9px;padding:2px 3px;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .month .event-time,.month .calendar-lunch .initial{display:none}
+  .month .empty-day{display:none}
+  /* Comfortable tap targets (at least 44px) for frequent controls. */
+  .check-button{width:44px;height:44px;min-height:44px;margin:-10px 0 -10px -10px}
+  .icon-link{width:44px;height:44px}
+  .segmented a{display:inline-flex;align-items:center;min-height:40px;padding:0 14px}
+  .calendar-toolbar .inline>a:not(.icon-link),.section-heading a,.text-link,.form-page>a:first-child,.form-actions a,a.danger,.card.narrow>a,main>a:first-child{display:inline-flex;align-items:center;min-height:44px}
+  summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+  .weekday-toggle{min-height:40px}
+  .task-title{display:inline-block;padding:4px 0}
+  .install-banner button{min-height:44px}
+  .account .quiet{min-height:44px}
+  .assistant a{display:inline-flex;align-items:center;min-height:44px}
+}

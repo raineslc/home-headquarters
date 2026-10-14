@@ -7,6 +7,7 @@ DASH-03 and CAL-02/TSK-02 recurrence are merged (owner chose Option A for clock-
 Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14; both are done.
 AI-04 is implemented; its first live evaluation run needs the owner's API key (see below).
 GGL-02 is implemented (owner chose an app-created calendar and per-activity choice); live setup pending.
+APP-01 Android installable app and a phone layout pass (owner request) are done on branch pwa-android-mobile.
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -173,7 +174,17 @@ participation. No further approval is needed merely to develop reversible local 
 - [ ] QA-01 Complete primary birthday-party scenario through approvals, linked records,
   search and delivered reminders in isolated test data. Hosted AI draft/edit/dismiss verified;
   real household test proposal was left unapproved. Database approval paths pass CI.
+- [x] APP-01 Installable Android app (PWA, owner request, Claude Code): web app manifest
+  (standalone, Home HQ, 192/512/maskable icons, Add activity/Tasks/Lunches shortcuts), a root
+  service worker that caches only hashed static files and a data-free offline page (family
+  pages are never cached), an in-app Install banner/Settings button (beforeinstallprompt) plus
+  Chrome menu instructions. Verified in headless Edge: worker active, no installability
+  errors, offline page shown during a real server outage. Real Android install pending.
 - [ ] QA-02 Full phone/desktop and keyboard/contrast/loading/empty/error checks across all flows.
+  Phone pass done (Claude Code, October 14): every page audited at 375px (no sideways scroll);
+  bottom tab bar with icons on phones, week view stacked by day, month view fits seven days,
+  44px tap targets for task completion, calendar arrows, view switch, back/cancel/delete links
+  and disclosure summaries; desktop unchanged. Keyboard/contrast/loading/error audit pending.
   Assistant phone sizing and desktop review checked; broader accessibility audit pending.
 - [ ] QA-03 Cross-household/concurrent-parent release regression, operational recovery drill,
   backup/restore instructions and recreation from a fresh clone against isolated PostgreSQL.
@@ -186,17 +197,17 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: GGL-02 family Google calendar writes (migration 0009) and OPS-01.
-  AI-04 (PR 6) merged earlier the same day.
-- Starting canonical GitHub commit: `790fc54b622eac38df1ac960511f1ecdb80169c2` (merged PR 6); branch `ggl-02-google-writes`.
+- Assistant: Claude Code. Change: APP-01 installable Android app and QA-02 phone layout pass.
+  GGL-02 and OPS-01 (PR 7) merged earlier the same day.
+- Starting canonical GitHub commit: `5dae6cc8b51d5149ff3ad314c2695b5e9a738b66` (merged PR 7); branch `pwa-android-mobile`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 90 organizer
-  tests passed (Google calls simulated), deploy check and migration drift check passed; local
-  visual check of the Google sections. No real Google calendar was created or changed.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 94 organizer
+  tests passed, deploy check and migration drift check passed; 375px audit of every page and
+  headless Edge check of service worker, installability and offline fallback.
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, reminder delivery. Next: merge GGL-02, Google Cloud scope + live setup, assistant_eval, REC-01 drill, FND-03.
+  participation, reminder delivery. Next: merge APP-01, install on an Android phone, Google Cloud scope + live setup, REC-01 drill, FND-03.
 
 ## Deferred until first release works
 

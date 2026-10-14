@@ -19,7 +19,7 @@ preserves history. Neither contains credentials or the live household database.
 ## Release status
 
 Not a production release. Calendar views, one-off and repeating activities, linked,
-repeating and high-priority tasks,
+repeating and high-priority tasks, an installable Android app,
 editable family profiles, monthly lunches, parent invitations, read-only Google Calendar,
 an opt-in family Google calendar the app writes to, and real AI proposals/approvals are
 available. Unattended sync,

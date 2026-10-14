@@ -23,6 +23,7 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 | organizer/models.py, migrations/ | Durable models and versioned schema (0001–0009) |
 | organizer/views.py, forms.py | Authentication, parent authorization, bootstrap, foundation UI |
 | organizer/planner.py, planner_forms.py | Calendar, family, tasks, lunch planning and validation |
+| organizer/pwa.py | Installable app: manifest, root service worker (static files and offline page only) |
 | organizer/recurrence.py | RRULE building/validation, occurrence expansion and clock-change handling |
 | organizer/invitations.py | Expiring email-bound single-use invitation links |
 | organizer/connections.py, google_service.py | OAuth ownership, sharing choices and manual sync |

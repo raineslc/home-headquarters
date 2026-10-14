@@ -61,3 +61,34 @@ document.querySelectorAll('[data-bulk-grid]').forEach(grid => {
   });
   grid.addEventListener('change', update);
 });
+// Installable phone app: register the service worker and offer Install where the browser allows it.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+(() => {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches;
+  document.querySelectorAll('[data-installed]').forEach(note => { note.hidden = !standalone; });
+  let deferred = null;
+  const remembered = () => { try { return localStorage.getItem('hhq-install-dismissed') === '1'; } catch (error) { return false; } };
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferred = event;
+    document.querySelectorAll('[data-install-ready]').forEach(block => { block.hidden = false; });
+    const banner = document.querySelector('[data-install-banner]');
+    if (banner && !remembered()) banner.hidden = false;
+  });
+  document.addEventListener('click', async event => {
+    if (event.target.closest('[data-install]') && deferred) {
+      deferred.prompt();
+      await deferred.userChoice;
+      deferred = null;
+      document.querySelectorAll('[data-install-banner], [data-install-ready]').forEach(item => { item.hidden = true; });
+    } else if (event.target.closest('[data-install-dismiss]')) {
+      try { localStorage.setItem('hhq-install-dismissed', '1'); } catch (error) { /* private mode */ }
+      document.querySelector('[data-install-banner]').hidden = true;
+    }
+  });
+  window.addEventListener('appinstalled', () => {
+    document.querySelectorAll('[data-install-banner], [data-install-ready]').forEach(item => { item.hidden = true; });
+  });
+})();
