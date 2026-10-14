@@ -37,7 +37,8 @@ class FoundationTests(TestCase):
     def test_households_cannot_read_each_other(self):
         SetupRecord.objects.create(household=self.other_house, title='Private other household note')
         self.assertNotContains(self.client.get('/'), 'Private other household note')
-        self.assertEqual(self.client.get('/foundation/export/').json()['records'], [])
+        exported = self.client.get('/foundation/export/').json()
+        self.assertEqual((exported['notes'], exported['members'], exported['activities']), ([], [], []))
         point = RecoveryPoint.objects.create(household=self.other_house, created_by=self.other, payload=snapshot(self.other_house))
         self.assertEqual(self.client.get(f'/foundation/recovery/{point.id}/').status_code, 404)
 
@@ -58,13 +59,13 @@ class FoundationTests(TestCase):
     def test_restore_validates_before_write_and_saves_recovery_point(self):
         SetupRecord.objects.create(household=self.house, title='Original')
         data = snapshot(self.house)
-        data['records'] = [{'title': 'Restored'}]
+        data['notes'] = [{'title': 'Restored', 'created_at': '2026-10-12T12:00:00+00:00'}]
         self.assertEqual(self.preview(data).status_code, 200)
         self.assertEqual(SetupRecord.objects.get().title, 'Original')
         self.client.post('/foundation/restore/', {'action': 'apply'})
         self.assertEqual(SetupRecord.objects.get().title, 'Restored')
         point = RecoveryPoint.objects.get(household=self.house)
-        self.assertEqual(point.payload['records'], [{'title': 'Original'}])
+        self.assertEqual([row['title'] for row in point.payload['notes']], ['Original'])
         self.assertNotIn('password', json.dumps(point.payload))
         # Replaying apply cannot overwrite again without another preview.
         self.assertEqual(self.client.post('/foundation/restore/', {'action': 'apply'}).status_code, 400)

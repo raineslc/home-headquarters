@@ -20,15 +20,15 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 | Path | Responsibility |
 |---|---|
 | hq/settings.py, urls.py | Configuration, middleware and routes |
-| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0005) |
+| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0006) |
 | organizer/views.py, forms.py | Authentication, parent authorization, bootstrap, foundation UI |
 | organizer/planner.py, planner_forms.py | Calendar, family, tasks, lunch planning and validation |
 | organizer/invitations.py | Expiring email-bound single-use invitation links |
 | organizer/connections.py, google_service.py | OAuth ownership, sharing choices and manual sync |
 | organizer/assistant.py, assistant_forms.py | Proposal history, edits, approvals and external search |
 | organizer/assistant_service.py | OpenAI request, strict schema and household-member validation |
-| organizer/recovery.py | Versioned foundation-note export and validated restore |
-| organizer/management/commands/ | Locked migration startup and heartbeat |
+| organizer/recovery.py | Versioned full-household export, validation and replacing restore |
+| organizer/management/commands/ | Locked migration startup, heartbeat and operator household export |
 | templates/, static/ | Responsive server-rendered UI and progressive enhancement |
 | organizer/tests.py, test_*.py | Isolated database and mocked-provider tests |
 | docs/verification.md | Observed checks, deployments and remaining verification limits |
@@ -48,7 +48,8 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 - AssistantPlan stores conversation, revision, status and concurrency version.
   AssistantSuggestion stores draft payload, approval/dismissal/supersession and result links.
   Approval status is independent from Task.completed_at. AssistantUsage limits daily attempts.
-- SetupRecord/RecoveryPoint support foundation notes; BootstrapState closes initial setup.
+- SetupRecord holds foundation notes. RecoveryPoint stores a full export saved before each
+  restore; PendingRestore holds a validated upload awaiting confirmation. BootstrapState closes setup.
   RateLimit and JobRun support login/request limits and heartbeat deduplication.
 
 ## Authorization, consistency and secrets
@@ -99,8 +100,16 @@ they are not integrated research results. See docs/assistant-preview.md.
 
 ## Recovery and release limitations
 
-Current exports include foundation notes only (format home-headquarters, version 1).
-Restore validates and previews, rejects stale replacement, and saves a recovery point.
-Full organizer/AI/lunch export and isolated restore drill remain unfinished. Source Git
-history and bundles cannot recover live household data. No scheduler, notification channel,
+Exports use format home-headquarters, version 2, scope household: notes, family members,
+activities with participants, tasks, lunch plans and assistant plans with suggestions.
+Accounts, memberships, invitations, Google connections/tokens/event caches, usage counters
+and recovery points are never exported; plan/suggestion authors appear as parent emails.
+Restore validates every field (model validation) and cross-reference before writing, stores
+the preview server-side for one hour per parent, rejects it if the household version changed,
+saves a full recovery point, then atomically replaces all organizer data with newly generated
+IDs, remapping references and member IDs inside suggestion payloads. Household name, zone,
+accounts and connections are unchanged. Unknown authors fall back to the restoring parent.
+Version 1 notes-only exports still restore notes only. `manage.py export_household <file>`
+writes the same export for operators. A hosted isolated recovery drill is still pending.
+Source Git history and bundles cannot recover live household data. No scheduler, notification channel,
 closed-app delivery, local recurrence, bulk event dates or Google write workflow exists yet.

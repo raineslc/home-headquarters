@@ -22,8 +22,9 @@ Chris's Google connection and hosted AI have been verified. Melissa's live sign-
 calendar connection still need verification. See docs/verification.md for evidence.
 
 Reminder preferences are stored, but notifications are not delivered. There is no
-closed-app sync scheduler. Recurrence, writable Google calendars, full household
-export/restore and production recovery remain release requirements, not optional polish.
+closed-app sync scheduler. Full household export/restore is implemented; its hosted recovery
+drill, recurrence, writable Google calendars and durable production storage remain release
+requirements, not optional polish.
 
 ## Design and accepted changes
 

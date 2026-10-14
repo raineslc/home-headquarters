@@ -4,6 +4,25 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Full household export and restore
+
+- Author: Claude Code. Task: REC-01 (implemented; hosted recovery drill pending).
+- Export format version 2 (`/foundation/export/`, `manage.py export_household`) now covers
+  notes, family members, activities/participants, tasks, lunch plans and assistant plans and
+  suggestions. Accounts, invitations, Google connections/tokens/event caches and usage counters
+  are excluded.
+- Restore validates every field and reference before writing, shows per-type counts and a
+  time zone warning, keeps the preview server-side for one hour per parent (migration 0006,
+  PendingRestore), rejects stale previews, saves a full recovery point, then replaces all
+  organizer data atomically with new IDs and remapped references. Recovery copies are
+  restorable exports. Version 1 notes exports still restore notes only. run_jobs removes
+  previews older than one day. Settings and foundation copy describe the full export.
+- Validation: 43 organizer tests on local isolated PostgreSQL 16, deploy check, migration drift
+  check and collectstatic passed. CI, deployment and the hosted drill are not yet verified.
+- Limitations: AI plan generation does not bump the household version, so it is not detected
+  as a stale-preview change; exports include parent emails as plan authors; no scheduled
+  off-site export yet.
+
 ## 2026-10-14 — Shared assistant handoff package
 
 - Author: ChatGPT/Codex. Task: HANDOFF-01.
