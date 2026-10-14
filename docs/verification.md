@@ -71,3 +71,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - Isolated PostgreSQL test covers ordering, each filter's membership and count (overdue included in due filters; completed and other-household tasks excluded), an unknown filter falling back to All, and the filtered empty state. 67 organizer tests passed locally.
 - Visual check on a local test database (sample data only): filter row with counts and the Due in 1 day filter.
+
+## Multi-date activity entry (CAL-03), October 14, 2026 — Claude Code
+
+- Five isolated PostgreSQL tests: default range and 120-day cap; review then create with sorted, de-duplicated dates, participants, conflicts listed and one household version bump; repeated batch adds nothing; a clock-change problem on one date blocks all dates; invalid, out-of-range and over-limit dates, missing title, end before start and another household's member rejected; all-day dates; changing the range keeps details and in-range dates. 72 organizer tests passed locally.
+- End-to-end at phone width on a local test database: weekday toggle selected six Saturdays, review listed them, and creation added six activities sharing one batch. Real household data was not used.

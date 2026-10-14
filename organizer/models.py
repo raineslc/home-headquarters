@@ -89,6 +89,8 @@ class Activity(models.Model):
     recurrence_exdates = models.JSONField(default=list, blank=True)
     series = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='overrides')
     occurrence_date = models.DateField(null=True, blank=True)
+    # Activities added together on several dates share a batch ID; it makes the bulk create idempotent.
+    batch = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['start_date', 'start_time', 'title']

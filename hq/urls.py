@@ -31,6 +31,7 @@ urlpatterns = [
     path('lunches/undo/', planner.undo_lunch, name='undo_lunch'),
     path('settings/', planner.settings, name='settings'),
     path('activity/<uuid:pk>/', planner.activity_detail, name='activity_detail'),
+    path('plan/activity/bulk/', planner.bulk_activity, name='bulk_activity'),
     path('plan/<str:kind>/new/', planner.edit, name='plan_new'),
     path('plan/<str:kind>/<uuid:pk>/edit/', planner.edit, name='plan_edit'),
     path('plan/<str:kind>/<uuid:pk>/remove/', planner.remove, name='plan_remove'),

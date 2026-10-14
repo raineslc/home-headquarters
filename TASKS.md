@@ -4,7 +4,7 @@ Authoritative shared backlog, migrated from the owner's original eleven-part bri
 README roadmap and subsequent accepted changes. Last reconciled: October 14, 2026.
 Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recovery drill remains.
 DASH-03 and CAL-02/TSK-02 recurrence are merged (owner chose Option A for clock-change times).
-Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14.
+Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14; both are done.
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -15,7 +15,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **CAL-03** multi-date bulk entry, then **GGL-02** Google writes (recurrence is now in place).
+3. **AI-04** assistant regression cases (including repeat requests), then **GGL-02** Google writes.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -68,7 +68,12 @@ participation. No further approval is needed merely to develop reversible local 
   fall-back time uses the first. Isolated PostgreSQL tests incl. DST, multi-day and splits.
   Limits: "this and following" removes later single-occurrence changes and restarts a COUNT;
   preparation tasks link to the series, not one date; the assistant cannot propose repeats yet.
-- [ ] CAL-03 Multi-date bulk activity entry with reviewed date selection and atomic validation.
+- [x] CAL-03 Multi-date bulk activity entry with reviewed date selection and atomic validation
+  (Claude Code). "Add on several dates": details once, a checkbox date grid (up to 120 days shown,
+  60 dates; weekday column toggles), then a review listing each date, per-date problems such as
+  clock-change times and other plans that day. All dates are created in one transaction or none;
+  a batch ID (migration 0008) makes a repeated submit add nothing. Each date is a one-off activity.
+  Limits: single-day activities only; batch is an idempotency key and is not exported.
 - [x] TSK-01 Task CRUD, complete/reopen timestamp, member/household assignment, due date/time,
   linked activity and visible preparation tasks; stale-edit checks.
 - [x] TSK-02 Recurring tasks and completion/next-occurrence semantics; no duplicate generation
@@ -152,16 +157,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: DASH-04 Overview task priority filters (owner request).
-  DASH-03 (PR 2) and CAL-02/TSK-02 (PR 3) were merged earlier the same day.
-- Starting canonical GitHub commit: `ba4356f77943367493d5991f4d4e9022e0697798` (merged PR 3); branch `dash-04-task-priorities`.
+- Assistant: Claude Code. Change: CAL-03 multi-date bulk activity entry (migration 0008).
+  DASH-04 (PR 4) merged earlier the same day.
+- Starting canonical GitHub commit: `1c198ccef60babe7a787509b7982bbdb6b61c7e8` (merged PR 4); branch `cal-03-bulk-dates`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 67 organizer
-  tests passed, deploy check and migration drift check passed; local visual check.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 72 organizer
+  tests passed, deploy check and migration drift check passed; phone-width end-to-end check on local test data.
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, Google writes/reminder delivery. Next: merge DASH-04, REC-01 drill, FND-03, CAL-03.
+  participation, Google writes/reminder delivery. Next: merge CAL-03, REC-01 drill, FND-03, AI-04.
 
 ## Deferred until first release works
 

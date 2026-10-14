@@ -14,12 +14,12 @@ all open tasks, high priority first, with High priority, Due in 7 days and Due i
 calendar, packed lunches in the daily overview. The full lunch table and “Next seven days”
 section were removed from Overview by owner request. Quick activity/task forms are inline.
 
-Still pending: bulk activity dates, Google writes,
+Still pending: Google writes,
 unattended sync, real reminder delivery and the hosted full-household recovery drill. Melissa's live
 account/calendar verification and complete release QA also remain. Reminder preferences
 are saved only, and opening Google search is not completed AI research.
 
-Migrations 0001–0007 preserve the existing foundation while adding organizer/connection/AI
+Migrations 0001–0008 preserve the existing foundation while adding organizer/connection/AI
 tables. Exports include all household organizer data (format version 2). Production paid scheduling has not
 been approved. Real-household sample AI proposals remain unapproved; creation/approval
 tests use isolated PostgreSQL fixtures.
