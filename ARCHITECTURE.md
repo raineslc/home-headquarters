@@ -20,7 +20,7 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 | Path | Responsibility |
 |---|---|
 | hq/settings.py, urls.py | Configuration, middleware and routes |
-| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0008) |
+| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0009) |
 | organizer/views.py, forms.py | Authentication, parent authorization, bootstrap, foundation UI |
 | organizer/planner.py, planner_forms.py | Calendar, family, tasks, lunch planning and validation |
 | organizer/recurrence.py | RRULE building/validation, occurrence expansion and clock-change handling |
@@ -86,13 +86,24 @@ Do not rotate that key without a re-encryption/reconnection plan.
 ## Google Calendar
 
 Dedicated deployed OAuth callback: /connections/google/callback/. State, PKCE, expiry
-and one-time callback handling protect authorization. Current scopes are read-only.
+and one-time callback handling protect authorization. Base scopes are read-only; every
+sign-in requests include_granted_scopes so earlier grants are kept.
 Parents choose Not shared, Busy only or Event details per calendar; Google private events
 are redacted. A manual complete snapshot covers the past 90/next 366 days with pagination
 and Google-expanded recurrence. Successful snapshots remove deleted events; failures keep
 the previous cache. Versions reject stale sync writes. Same calendar/event IDs deduplicate;
 invited copies across different calendar IDs intentionally remain separate. Unified views
 combine this cache with local activities. See docs/GOOGLE-CALENDAR.md.
+
+Writes (organizer/google_writes.py) go only to one app-created calendar per household
+(FamilyCalendar), using calendar.app.created granted by explicit opt-in (GoogleConnection.can_write).
+Activity.google_sync marks activities to copy; post_save/post_delete hooks push after commit
+(transaction.on_commit), recording google_state/google_error with queryset updates so pushes do
+not re-trigger. Event IDs derive from the activity UUID (retries become updates); updates send
+If-Match ETags (412 → conflict); 404/410 → removed; deletes queue GooglePendingDeletion rows.
+Series send RRULE (timed UNTIL converted to UTC end of day) and EXDATEs; changed occurrences are
+separate events. Restores run with writes paused. shared_events skips cached copies of
+app-written events (including "<id>_<instance>" recurring IDs).
 
 ## AI and search
 

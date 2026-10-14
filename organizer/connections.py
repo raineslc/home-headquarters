@@ -12,7 +12,8 @@ from django.views.decorators.http import require_GET, require_POST
 from oauthlib.oauth2 import OAuth2Error
 import requests
 from . import google_service as google
-from .models import GoogleConnection, GoogleCalendar, GoogleEvent
+from . import google_writes
+from .models import Activity, FamilyCalendar, GoogleConnection, GoogleCalendar, GoogleEvent, GooglePendingDeletion
 from .views import parent_only, limited
 
 @parent_only
@@ -20,22 +21,41 @@ from .views import parent_only, limited
 def index(request):
     return render(request, 'connections/index.html', {'section': 'settings', 'ready': google.configured(),
         'connections': GoogleConnection.objects.filter(household=request.household, owner=request.user).prefetch_related('calendars'),
-        'shared': GoogleCalendar.objects.filter(connection__household=request.household).exclude(visibility='off').select_related('connection__owner')})
+        'shared': GoogleCalendar.objects.filter(connection__household=request.household).exclude(visibility='off').select_related('connection__owner'),
+        'family': google_writes.family_calendar(request.household),
+        'pending_deletions': GooglePendingDeletion.objects.filter(calendar__connection__household=request.household),
+        'waiting': Activity.objects.filter(household=request.household, google_sync=True).exclude(google_state__in=['synced', 'conflict', 'removed']).count(),
+        'attention': Activity.objects.filter(household=request.household, google_sync=True, google_state__in=['conflict', 'removed'])})
 
-@parent_only
-@require_POST
-def begin(request):
+def start_oauth(request, write=False, login_hint=None):
     if not google.configured():
         messages.error(request, 'Google connection setup is still required. No Google account has been connected.')
         return redirect('google_connections')
     if limited('google-connect:' + str(request.user.pk), 10):
         return HttpResponse('Please wait 15 minutes before trying again.', status=429)
     state, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
-    request.session['google_oauth'] = {'state': state, 'verifier': verifier,
+    request.session['google_oauth'] = {'state': state, 'verifier': verifier, 'write': write,
         'user': request.user.pk, 'household': str(request.household.pk), 'expires': (timezone.now() + timedelta(minutes=10)).timestamp()}
-    oauth = google.flow(state=state, code_verifier=verifier)
-    url, _ = oauth.authorization_url(access_type='offline', prompt='consent select_account')
+    oauth = google.flow(write=write, state=state, code_verifier=verifier)
+    # Keep permissions granted earlier, so reconnecting never drops family calendar access.
+    extra = {'login_hint': login_hint} if login_hint else {}
+    url, _ = oauth.authorization_url(access_type='offline', prompt='consent select_account', include_granted_scopes='true', **extra)
     return redirect(url)
+
+@parent_only
+@require_POST
+def begin(request):
+    return start_oauth(request)
+
+@parent_only
+@require_POST
+def family_begin(request, pk):
+    # Opt-in: asks only this parent for the extra "calendars this app creates" permission.
+    connection = owned(request, pk)
+    if google_writes.family_calendar(request.household):
+        messages.info(request, 'The family Google calendar is already set up.')
+        return redirect('google_connections')
+    return start_oauth(request, write=True, login_hint=connection.email)
 
 @parent_only
 @require_GET
@@ -48,12 +68,15 @@ def callback(request):
         messages.info(request, 'Google connection was cancelled. Nothing was shared.')
         return redirect('google_connections')
     try:
-        oauth = google.flow(state=pending['state'], code_verifier=pending['verifier'])
+        write = bool(pending.get('write'))
+        oauth = google.flow(write=write, state=pending['state'], code_verifier=pending['verifier'])
         oauth.fetch_token(code=request.GET['code'], timeout=20)
         credentials = oauth.credentials
         granted = credentials.granted_scopes or credentials.scopes
         if not set(google.SCOPES).issubset(set(granted)):
             raise google.GoogleUnavailable('Google did not grant the required read-only calendar permissions. Please connect again and allow both calendar permissions.')
+        if write and google.WRITE_SCOPE not in granted:
+            raise google.GoogleUnavailable('Google did not grant permission to create the family calendar. Nothing was changed; your read-only connection still works.')
         identity = google.get_json('https://openidconnect.googleapis.com/v1/userinfo', credentials.token)
         if not identity.get('email_verified') or not identity.get('sub') or not identity.get('email'):
             raise google.GoogleUnavailable('Google could not verify this account.')
@@ -71,10 +94,17 @@ def callback(request):
             if not connection.encrypted_refresh_token:
                 raise google.GoogleUnavailable('Google did not provide continuing access. Please connect again.')
             connection.email, connection.needs_reconnect = identity['email'], False
+            connection.can_write = google.WRITE_SCOPE in granted
             connection.version += 1
             connection.save()
-        google.refresh_calendars(connection, credentials.token)
-        messages.success(request, 'Google connected. Choose calendars and how much to share below; new calendars are hidden until you choose.')
+        if write:
+            if not google_writes.family_calendar(request.household):
+                google_writes.create_family_calendar(connection, credentials.token)
+            google.refresh_calendars(connection, credentials.token)
+            messages.success(request, 'The Home Headquarters calendar was created in your Google account. Activities you choose will be added to it.')
+        else:
+            google.refresh_calendars(connection, credentials.token)
+            messages.success(request, 'Google connected. Choose calendars and how much to share below; new calendars are hidden until you choose.')
     except (google.GoogleUnavailable, OAuth2Error, requests.RequestException, ValueError) as error:
         messages.error(request, str(error) if isinstance(error, google.GoogleUnavailable) else 'Google connection could not finish. Please try again.')
     return redirect('google_connections')
@@ -148,3 +178,56 @@ def event_detail(request, pk):
         calendar__visibility__in=['busy', 'details'], calendar__connection__owner__membership__active=True,
         calendar__connection__owner__membership__household=request.household)
     return render(request, 'connections/event.html', {'section': 'home', 'event': event})
+
+@parent_only
+@require_POST
+def family_retry(request):
+    removed = google_writes.retry_deletions(request.household)
+    waiting = Activity.objects.filter(household=request.household, google_sync=True).exclude(google_state__in=['synced', 'conflict', 'removed'])
+    results = [google_writes.push(activity) for activity in waiting.select_related('household', 'google_calendar__connection')[:50]]
+    left = GooglePendingDeletion.objects.filter(calendar__connection__household=request.household).count() + results.count('failed') + results.count('pending')
+    if left:
+        messages.error(request, f'{left} Google update(s) still need attention. Try again shortly.')
+    else:
+        messages.success(request, 'Google is up to date.')
+    if removed:
+        messages.info(request, f'Removed {removed} deleted activit{"y" if removed == 1 else "ies"} from Google.')
+    return redirect('google_connections')
+
+@parent_only
+@require_POST
+def family_stop(request):
+    # Stops future updates and leaves existing Google events untouched; nothing is deleted in Google.
+    with transaction.atomic():
+        from .models import Household
+        Household.objects.select_for_update().get(pk=request.household.pk)
+        Activity.objects.filter(household=request.household).update(google_sync=False, google_calendar=None, google_event_id='',
+                                                                    google_etag='', google_state='', google_error='')
+        FamilyCalendar.objects.filter(household=request.household).delete()
+    messages.success(request, 'Home Headquarters will no longer update Google. Existing Google events were left as they are.')
+    return redirect('google_connections')
+
+@parent_only
+@require_POST
+def activity_google(request, pk):
+    activity = get_object_or_404(Activity.objects.select_related('household', 'google_calendar__connection'), pk=pk, household=request.household)
+    action = request.POST.get('action')
+    if action == 'retry':
+        state = google_writes.push(activity)
+    elif action == 'keep_app':
+        state = google_writes.push(activity, force=True)
+    elif action == 'recreate':
+        state = google_writes.recreate(activity)
+    elif action == 'unlink':
+        # Keep whatever is in Google now and stop updating it from here.
+        Activity.objects.filter(pk=activity.pk).update(google_sync=False, google_calendar=None, google_event_id='', google_etag='', google_state='', google_error='')
+        messages.success(request, 'This activity will no longer update Google. The Google event was left as it is.')
+        return redirect('activity_detail', pk=pk)
+    else:
+        return HttpResponse('Choose a Google action.', status=400)
+    if state == 'synced':
+        messages.success(request, 'Google Calendar is up to date for this activity.')
+    else:
+        messages.error(request, Activity.objects.get(pk=pk).google_error or 'Google could not be updated. Try again shortly.')
+    return redirect('activity_detail', pk=pk)
+

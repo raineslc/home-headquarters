@@ -183,3 +183,12 @@ class PlannerTests(TestCase):
         Task.objects.filter(household=self.house).update(completed_at=timezone.now())
         self.assertContains(self.client.get('/?tasks=day'), 'Nothing due today or tomorrow')
 
+
+    def test_settings_shows_the_running_version(self):
+        from unittest.mock import patch
+        self.assertContains(self.client.get('/settings/'), 'Running a local build')
+        with patch.dict('os.environ', {'RENDER_GIT_COMMIT': '790fc54b622eac38df1ac960511f1ecdb80169c2', 'RENDER_GIT_BRANCH': 'main'}):
+            response = self.client.get('/settings/')
+        self.assertContains(response, '<code>790fc54</code>')
+        self.assertContains(response, 'https://github.com/raineslc/home-headquarters/commit/790fc54b622eac38df1ac960511f1ecdb80169c2')
+        self.assertContains(response, 'from main')

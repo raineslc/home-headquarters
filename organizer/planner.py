@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from .models import Activity, FamilyMember, Household, LunchPlan, Task
-from .planner_forms import ActivityForm, BulkActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm
+from .planner_forms import ActivityForm, BulkActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm, has_family_calendar
 from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
@@ -68,6 +68,7 @@ def quick_entry(request, task_page=False):
             if kind == 'activity':
                 item.end_date = item.start_date
                 item.timezone = household.timezone
+                item.google_sync = has_family_calendar(household)
             item.save()
             form.save_m2m()
             bump(household)
@@ -409,11 +410,12 @@ def undo_lunch(request):
 @parent_only
 @require_GET
 def settings(request):
-    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household})
+    from .version import info
+    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household, 'version': info()})
 
 BULK_MAX_DATES = 60
 BULK_MAX_DAYS = 120
-BULK_DETAILS = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes', 'batch', 'version']
+BULK_DETAILS = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes', 'google_sync', 'batch', 'version']
 
 def bulk_range(request, today):
     """The date range shown for selection: up to 120 days, defaulting to six weeks from today."""
@@ -471,6 +473,7 @@ def bulk_initial(request):
     initial = {name: request.POST.get(name) for name in BULK_DETAILS if name != 'participants'}
     initial['participants'] = request.POST.getlist('participants')
     initial['all_day'] = request.POST.get('all_day') in ('on', 'true', 'True', '1')
+    initial['google_sync'] = request.POST.get('google_sync') in ('on', 'true', 'True', '1')
     return initial
 
 @parent_only

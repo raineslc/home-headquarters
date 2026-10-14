@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .models import AssistantPlan, AssistantSuggestion, AssistantUsage, Activity, Task, Household
 from .assistant_forms import PromptForm, ClarifyForm, EventDraftForm, TaskDraftForm, json_payload
 from .assistant_service import normalized, propose, AssistantUnavailable
-from .planner_forms import ActivityForm, TaskForm
+from .planner_forms import ActivityForm, TaskForm, has_family_calendar
 from .planner import bump, conflict
 from .views import parent_only, limited
 
@@ -110,6 +110,7 @@ def approve(suggestion, check, draft, plan, user, linked_event):
     item.reminder_minutes = draft.cleaned_data['reminder_minutes']
     if suggestion.kind == 'event':
         item.timezone = plan.household.timezone
+        item.google_sync = has_family_calendar(plan.household)
     else:
         item.activity = linked_event
         item.search_prompt = draft.cleaned_data['search_prompt']

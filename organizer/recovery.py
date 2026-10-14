@@ -282,6 +282,15 @@ def replace_household_data(household, user, data):
         SetupRecord.objects.bulk_create([SetupRecord(household=household, title=row['title']) for row in rows])
         return
     data = validate_household(data)
+    # A restore replaces local data only; it never edits or deletes the family Google calendar.
+    from .google_writes import paused
+    token = paused.set(True)
+    try:
+        replace_validated(household, user, data)
+    finally:
+        paused.reset(token)
+
+def replace_validated(household, user, data):
     AssistantPlan.objects.filter(household=household).delete()
     Task.objects.filter(household=household).delete()
     LunchPlan.objects.filter(household=household).delete()
