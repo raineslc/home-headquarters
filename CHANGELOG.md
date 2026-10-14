@@ -4,6 +4,22 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Assistant regression cases and repeat suggestions
+
+- Author: Claude Code. Task: AI-04 (implemented; first live evaluation pending).
+- Seven regression cases with checks (organizer/assistant_cases.py): birthday recipient,
+  same-day weekday, sparse input, task-only, repeating activity, repeating task, and a
+  clarification that must keep edits and dismissals. CI runs them against recorded samples;
+  `manage.py assistant_eval` runs them against the real provider without keeping any records.
+- The assistant can now suggest repeating activities and tasks. Patterns are validated like
+  saved series; an unusable one is dropped and turned into a question. Approval creates the
+  series or repeating task.
+- Server guards: near-duplicate tasks and questions are removed; a clarification cannot bring
+  back a dismissed suggestion. The prompt context now includes the current weekday.
+- Validation: 79 organizer tests on local isolated PostgreSQL; local visual check.
+- Limitations: live evaluation not yet run; same-day weekday questions and keeping edited
+  titles still depend on the model and are measured by the cases rather than enforced.
+
 ## 2026-10-14 — Add an activity on several dates
 
 - Author: Claude Code. Task: CAL-03.

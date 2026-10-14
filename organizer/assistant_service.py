@@ -5,8 +5,11 @@ from zoneinfo import ZoneInfo
 import requests
 from django.conf import settings
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from .assistant_forms import EventDraftForm, TaskDraftForm, json_payload
 from .models import FamilyMember
+from .planner_forms import REPEAT_NAMES
+from .recurrence import WEEKDAYS, build_rule
 
 class AssistantUnavailable(Exception):
     pass
@@ -18,17 +21,23 @@ def object_schema(properties):
     return {'type': 'object', 'properties': properties, 'required': list(properties), 'additionalProperties': False}
 
 REMINDER = {'type': ['integer', 'null'], 'enum': [None, 30, 60, 1440, 2880]}
+REPEAT = {'anyOf': [object_schema({
+    'frequency': {'type': 'string', 'enum': ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']}, 'interval': {'type': 'integer'},
+    'weekdays': {'type': 'array', 'items': {'type': 'string', 'enum': WEEKDAYS}, 'maxItems': 7},
+    'monthly_by': {'type': 'string', 'enum': ['day', 'weekday']}, 'ends': {'type': 'string', 'enum': ['never', 'until', 'count']},
+    'until': text_schema(10, True), 'count': {'type': ['integer', 'null']},
+}), {'type': 'null'}]}
 EVENT_SCHEMA = object_schema({
     'title': text_schema(200), 'start_date': text_schema(10, True), 'end_date': text_schema(10, True),
     'start_time': text_schema(8, True), 'end_time': text_schema(8, True), 'all_day': {'type': 'boolean'},
     'participants': {'type': 'array', 'items': text_schema(36), 'maxItems': 20},
-    'location': text_schema(300), 'notes': text_schema(5000), 'reminder_minutes': REMINDER,
+    'location': text_schema(300), 'notes': text_schema(5000), 'reminder_minutes': REMINDER, 'repeat': REPEAT,
 })
 TASK_SCHEMA = object_schema({
     'title': text_schema(200), 'assignee': text_schema(36, True),
     'due_date': text_schema(10, True), 'due_time': text_schema(8, True), 'high_priority': {'type': 'boolean'},
     'notes': text_schema(5000), 'reminder_minutes': REMINDER,
-    'search_prompt': text_schema(500), 'search_questions': text_schema(500),
+    'search_prompt': text_schema(500), 'search_questions': text_schema(500), 'repeat': REPEAT,
 })
 PLAN_SCHEMA = object_schema({
     'reply': text_schema(1200), 'questions': {'type': 'array', 'items': text_schema(300), 'maxItems': 6},
@@ -66,8 +75,14 @@ Identify tasks that benefit from shopping, local search, comparison, research or
 Give those a short editable search_prompt with no family names, email, exact address,
 private notes or calendar details. Ask for city/area when a local search needs it.
 Use empty search_prompt for tasks without a useful search. Never fabricate search results.
-Propose single occurrences only; if recurrence is requested, explain it is not supported
-in this assistant yet and ask for a specific occurrence. Reminders are preferences only:
+Set repeat only when the user says something repeats; otherwise repeat is null. Use frequency
+DAILY/WEEKLY/MONTHLY/YEARLY, interval 1 unless stated ("every other week" is 2), weekdays as
+MO..SU for weekly, monthly_by "day" (same date) or "weekday" (such as second Tuesday), and ends
+"until" with a YYYY-MM-DD date, "count" with a number, or "never" only when it is ongoing.
+The event start_date or task due_date must be the first occurrence and match the pattern.
+If how often, which days, or when it ends is unclear, ask instead of guessing.
+A repeating preparation task (such as weekly laundry) needs a first due date.
+Reminders are preferences only:
 delivery is not enabled. No automatic calendar sync or Google calendar writes.
 When clarification follows, return the full revised proposal using earlier conversation
 details. Preserve the user's edits supplied in current_drafts. Do not revive dismissed items.
@@ -101,16 +116,61 @@ def check_shape(value, schema):
     elif actual == 'string' and len(value) > schema.get('maxLength', 10000):
         raise ValueError('Text too long')
 
+NO_REPEAT = {'repeat': '', 'interval': 1, 'weekdays': [], 'monthly_by': 'day', 'ends': 'never', 'until': None, 'count': None}
+
+def normalized(text):
+    return ' '.join(re.sub(r'[^a-z0-9 ]', ' ', text.lower()).split())
+
+def flat_repeat(repeat):
+    if not repeat:
+        return dict(NO_REPEAT)
+    return {'repeat': repeat['frequency'], 'interval': repeat['interval'], 'weekdays': repeat['weekdays'],
+            'monthly_by': repeat['monthly_by'], 'ends': repeat['ends'], 'until': repeat['until'], 'count': repeat['count']}
+
+def repeat_problem(payload, kind):
+    """Why a drafted repeat cannot be used as-is, or None. Checked like a saved series would be."""
+    if not payload['repeat']:
+        return None
+    anchor = payload.get('start_date' if kind == 'event' else 'due_date')
+    if not anchor:
+        return None  # the missing date is already asked about; the repeat is checked again on approval
+    try:
+        from datetime import date
+        build_rule(payload['repeat'], payload['interval'] or 1, date.fromisoformat(anchor), payload['weekdays'],
+                   payload['monthly_by'], payload['ends'], payload['until'] and date.fromisoformat(payload['until']), payload['count'])
+    except (ValidationError, ValueError):
+        return 'unusable'
+    return None
+
 def validate_proposal(data, household):
     check_shape(data, PLAN_SCHEMA)
     names = list(FamilyMember.objects.filter(household=household).values_list('name', flat=True))
+    repeat_questions = []
+    # A model sometimes repeats a task with different capitalization or punctuation; keep the first.
+    seen, tasks = set(), []
+    for item in data['tasks']:
+        key = normalized(item['title'])
+        if key and key not in seen:
+            seen.add(key)
+            tasks.append(item)
+    data['tasks'] = tasks
     for kind, payload in [('event', data['event'])] + [('task', item) for item in data['tasks']]:
         if payload is None:
             continue
-        form = (EventDraftForm if kind == 'event' else TaskDraftForm)(payload, household=household)
+        payload.update(flat_repeat(payload.pop('repeat')))
+        form_class = EventDraftForm if kind == 'event' else TaskDraftForm
+        form = form_class(payload, household=household)
+        if not form.is_valid() and payload['repeat'] and set(form.errors) <= set(REPEAT_NAMES):
+            payload.update(NO_REPEAT)
+            repeat_questions.append(f'How should "{payload["title"]}" repeat? Please describe the days and when it ends.')
+            form = form_class(payload, household=household)
         if not form.is_valid():
             raise ValueError('Unusable proposal fields')
         payload.update(json_payload(form.cleaned_data))
+        if repeat_problem(payload, kind):
+            # Never save a pattern that would not match its first date; ask instead.
+            payload.update(NO_REPEAT)
+            repeat_questions.append(f'How should "{payload["title"]}" repeat? The suggested pattern did not match its first date.')
         for key in ('start_date', 'end_date', 'due_date'):
             if payload.get(key) and not 1901 <= int(payload[key][:4]) <= 2098:
                 raise ValueError('Date outside supported range')
@@ -134,20 +194,28 @@ def validate_proposal(data, household):
             missing.append('What time does the activity end?')
         if not event['end_date']:
             missing.append('Does it end on the same date? Please confirm the last day.')
-        data['questions'] = list(dict.fromkeys(missing + data['questions']))[:8]
+        data['questions'] = missing + data['questions']
     elif data['tasks']:
         data['reply'] = 'Review the proposed tasks below. Nothing has been added yet.'
     else:
         data['reply'] = 'No activity or task could be drafted. Please describe one activity or a to-do, including any dates you know.'
+    questions, seen = [], set()
+    for question in data['questions'] + repeat_questions:
+        key = normalized(question)
+        if key and key not in seen:
+            seen.add(key)
+            questions.append(question)
+    data['questions'] = questions[:8]
     return data
 
-def propose(household, turns, current_drafts=None):
+def propose(household, turns, current_drafts=None, today=None):
     if not settings.OPENAI_API_KEY:
         raise AssistantUnavailable('AI is not connected yet. Your description is saved; no plans were created.')
     members = list(FamilyMember.objects.filter(household=household, archived=False).values('id', 'name', 'role'))
     for member in members:
         member['id'] = str(member['id'])
-    context = {'today': timezone.localdate(timezone=ZoneInfo(household.timezone)).isoformat(),
+    today = today or timezone.localdate(timezone=ZoneInfo(household.timezone))
+    context = {'today': today.isoformat(), 'weekday': today.strftime('%A'),
         'timezone': household.timezone, 'family_members': members,
         'conversation': turns, 'current_drafts': current_drafts or []}
     try:

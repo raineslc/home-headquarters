@@ -5,6 +5,7 @@ README roadmap and subsequent accepted changes. Last reconciled: October 14, 202
 Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recovery drill remains.
 DASH-03 and CAL-02/TSK-02 recurrence are merged (owner chose Option A for clock-change times).
 Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14; both are done.
+AI-04 is implemented; its first live evaluation run needs the owner's API key (see below).
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -15,7 +16,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **AI-04** assistant regression cases (including repeat requests), then **GGL-02** Google writes.
+3. **AI-04** live evaluation run (owner key), then **GGL-02** Google writes.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -67,7 +68,7 @@ participation. No further approval is needed merely to develop reversible local 
   Option A, matches Google): a skipped spring-forward time moves forward by the gap; a repeated
   fall-back time uses the first. Isolated PostgreSQL tests incl. DST, multi-day and splits.
   Limits: "this and following" removes later single-occurrence changes and restarts a COUNT;
-  preparation tasks link to the series, not one date; the assistant cannot propose repeats yet.
+  preparation tasks link to the series, not one date. The assistant can propose repeats (AI-04).
 - [x] CAL-03 Multi-date bulk activity entry with reviewed date selection and atomic validation
   (Claude Code). "Add on several dates": details once, a checkbox date grid (up to 120 days shown,
   60 dates; weekday column toggles), then a review listing each date, per-date problems such as
@@ -113,6 +114,17 @@ participation. No further approval is needed merely to develop reversible local 
   ambiguity, sparse input, task-only input, recurrence requests, preserving edits/dismissals
   through clarification and avoiding duplicate questions/tasks. Birthday ambiguity was fixed;
   model-generated results still need user review. Add meaningful regression evaluation cases.
+  **Implemented, live run pending (Claude Code).** organizer/assistant_cases.py defines seven
+  cases with outcome checks (birthday recipient, same-day weekday, sparse input, task-only,
+  repeating activity, repeating task, clarification keeping edits and dismissals) plus common
+  checks (honest reply, no duplicates, private search prompts, no unrequested priority or
+  reminders). CI runs every case against a recorded passing sample and 11 known-bad samples.
+  `manage.py assistant_eval` runs the cases against the real provider (API credit) in a
+  rolled-back transaction. Server guards: the assistant can now propose repeats (validated like
+  saved series; an unusable pattern is dropped and asked about), duplicate tasks/questions are
+  removed, and a clarification cannot bring back a dismissed item. Remaining: run
+  assistant_eval with the owner's key and record results; same-day weekday and edit retention
+  still rely on the model and are measured, not enforced.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   Saved reminder preferences are implemented but do not satisfy delivery acceptance.
 
@@ -157,16 +169,17 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: CAL-03 multi-date bulk activity entry (migration 0008).
-  DASH-04 (PR 4) merged earlier the same day.
-- Starting canonical GitHub commit: `1c198ccef60babe7a787509b7982bbdb6b61c7e8` (merged PR 4); branch `cal-03-bulk-dates`.
+- Assistant: Claude Code. Change: AI-04 assistant regression cases, evaluation command, repeat
+  proposals and server guards. CAL-03 (PR 5) merged earlier the same day.
+- Starting canonical GitHub commit: `eb4ffe6849cd53bdacb327496670649b833b678b` (merged PR 5); branch `ai-04-assistant-cases`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 72 organizer
-  tests passed, deploy check and migration drift check passed; phone-width end-to-end check on local test data.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 79 organizer
+  tests passed, deploy check and migration drift check passed; local review-page visual check.
+  The live provider evaluation was not run (no API key on this machine).
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, Google writes/reminder delivery. Next: merge CAL-03, REC-01 drill, FND-03, AI-04.
+  participation, Google writes/reminder delivery. Next: merge AI-04, run assistant_eval, REC-01 drill, FND-03.
 
 ## Deferred until first release works
 

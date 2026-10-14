@@ -108,6 +108,14 @@ two minutes. API-key presence enables the UI; only a real successful request pro
 connection. Search prompts require an explicit reviewed submit to external Google search;
 they are not integrated research results. See docs/assistant-preview.md.
 
+Drafts may include a structured repeat (frequency, interval, weekdays, monthly mode, end).
+The server flattens it into the same repeat fields as the planner forms, builds the RRULE
+against the first date and, if it does not fit, drops it and asks instead. Approval uses the
+planner forms with repeat enabled. The server also removes near-duplicate tasks and
+questions, and generation skips items matching a dismissed suggestion's title.
+organizer/assistant_cases.py holds regression cases and checks; tests run them against
+recorded samples, and `manage.py assistant_eval` runs them live in a rolled-back transaction.
+
 ## Recovery and release limitations
 
 Exports use format home-headquarters, version 3, scope household: notes, family members,

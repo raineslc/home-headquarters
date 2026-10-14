@@ -1,5 +1,6 @@
 from django import forms
 from .models import FamilyMember
+from .planner_forms import REPEAT_NAMES, add_repeat_fields
 
 REMINDERS = [('', 'No reminder preference'), ('30', '30 minutes before'), ('60', '1 hour before'), ('1440', '1 day before'), ('2880', '2 days before')]
 
@@ -26,6 +27,7 @@ class EventDraftForm(forms.Form):
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['participants'].queryset = FamilyMember.objects.filter(household=household, archived=False).order_by('name')
+        add_repeat_fields(self, '')
 
 class TaskDraftForm(forms.Form):
     title = forms.CharField(max_length=200)
@@ -41,10 +43,11 @@ class TaskDraftForm(forms.Form):
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household, archived=False).order_by('name')
+        add_repeat_fields(self, '')
 
 def json_payload(data):
     result = dict(data)
-    for key in ('start_date', 'end_date', 'start_time', 'end_time', 'due_date', 'due_time'):
+    for key in ('start_date', 'end_date', 'start_time', 'end_time', 'due_date', 'due_time', 'until'):
         if key in result:
             result[key] = result[key].isoformat() if result[key] else None
     if 'participants' in result:

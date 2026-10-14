@@ -16,8 +16,8 @@ class AssistantTests(TestCase):
         self.child = FamilyMember.objects.create(household=self.house, name='Logan', role='child')
         self.foreign = FamilyMember.objects.create(household=self.other, name='Other child', role='child')
         self.client.force_login(self.parent)
-        event = dict(title='Birthday party', start_date='2026-10-17', end_date='2026-10-17', start_time='14:00', end_time='16:00', all_day=False, participants=[str(self.child.pk)], location='', notes='', reminder_minutes=60)
-        task = dict(title='Buy a gift', assignee=None, due_date='2026-10-16', due_time=None, high_priority=False, notes='Suggested deadline', reminder_minutes=1440, search_prompt='birthday gift ideas', search_questions='What age and budget?')
+        event = dict(title='Birthday party', start_date='2026-10-17', end_date='2026-10-17', start_time='14:00', end_time='16:00', all_day=False, participants=[str(self.child.pk)], location='', notes='', reminder_minutes=60, repeat=None)
+        task = dict(title='Buy a gift', assignee=None, due_date='2026-10-16', due_time=None, high_priority=False, notes='Suggested deadline', reminder_minutes=1440, search_prompt='birthday gift ideas', search_questions='What age and budget?', repeat=None)
         self.proposal = dict(reply='Draft only', questions=['What age and budget?'], event=event, tasks=[dict(task, title=title) for title in ['Buy a gift', 'Wrap the gift', 'Confirm the address']])
 
     def draft(self, proposal=None):

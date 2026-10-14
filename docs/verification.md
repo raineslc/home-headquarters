@@ -76,3 +76,9 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - Five isolated PostgreSQL tests: default range and 120-day cap; review then create with sorted, de-duplicated dates, participants, conflicts listed and one household version bump; repeated batch adds nothing; a clock-change problem on one date blocks all dates; invalid, out-of-range and over-limit dates, missing title, end before start and another household's member rejected; all-day dates; changing the range keeps details and in-range dates. 72 organizer tests passed locally.
 - End-to-end at phone width on a local test database: weekday toggle selected six Saturdays, review listed them, and creation added six activities sharing one batch. Real household data was not used.
+
+## Assistant regression cases (AI-04), October 14, 2026 — Claude Code
+
+- Seven cases with outcome checks run in CI against recorded sample outputs: every case passes its sample and 11 deliberately bad samples each trip the intended check. Guard tests cover duplicate removal, unusable repeat patterns becoming questions, approving repeating suggestions into a series and a repeating task, and dismissed items not returning after clarification. 79 organizer tests passed locally.
+- Review page visual check on a local test database: a repeating suggestion shows only the relevant repeat fields.
+- Not yet run: `manage.py assistant_eval` against the real provider (no API key on this machine). Results of the first live run should be recorded here.

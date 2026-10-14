@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from .models import AssistantPlan, AssistantSuggestion, AssistantUsage, Activity, Task, Household
 from .assistant_forms import PromptForm, ClarifyForm, EventDraftForm, TaskDraftForm, json_payload
-from .assistant_service import propose, AssistantUnavailable
+from .assistant_service import normalized, propose, AssistantUnavailable
 from .planner_forms import ActivityForm, TaskForm
 from .planner import bump, conflict
 from .views import parent_only, limited
@@ -42,6 +42,9 @@ def generate(plan):
         locked.suggestions.filter(status='pending').update(status='superseded')
         locked.revision += 1
         items = ([('event', result['event'])] if result['event'] else []) + [('task', task) for task in result['tasks']]
+        # A clarification must not bring back something a parent dismissed earlier in this conversation.
+        dismissed = {(item.kind, normalized(item.payload.get('title', ''))) for item in locked.suggestions.filter(status='dismissed')}
+        items = [(kind, payload) for kind, payload in items if (kind, normalized(payload['title'])) not in dismissed]
         for position, (kind, payload) in enumerate(items):
             AssistantSuggestion.objects.create(plan=locked, revision=locked.revision, position=position, kind=kind, payload=payload)
         locked.reply, locked.questions = result['reply'], result['questions']
@@ -90,7 +93,7 @@ def approval_form(suggestion, draft_form, household):
     payload = json_payload(draft_form.cleaned_data)
     payload['version'] = 0
     cls = ActivityForm if suggestion.kind == 'event' else TaskForm
-    check = cls(payload, household=household)
+    check = cls(payload, household=household, repeat=True)
     valid = check.is_valid()
     if not valid:
         for key, errors in check.errors.items():
