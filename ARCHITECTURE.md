@@ -8,6 +8,8 @@ Python 3.13.7, Django 5.2 LTS, PostgreSQL 17, Gunicorn and WhiteNoise. Server-re
 templates with small CSS/JavaScript assets; no SPA, browser database or second local backend.
 Dependencies are pinned in requirements.txt. PostgreSQL is required in every environment.
 
+Target hosting (FND-03, in progress): Google Cloud Run + Neon via the Dockerfile and the
+workflow's deploy-cloud-run job; see docs/HOSTING.md. Until cutover:
 Render's root render.yaml provisions the free preview web service and database. Build
 installs requirements and collects static assets. Startup runs migrate_locked under a
 PostgreSQL advisory lock, then Gunicorn. GitHub Actions runs deployment checks, migration

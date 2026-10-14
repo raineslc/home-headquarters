@@ -60,6 +60,9 @@ The hosted application uses the same code and PostgreSQL schema.
 
 ## Deployment
 
+Moving to Google Cloud Run + Neon (FND-03); see [docs/HOSTING.md](docs/HOSTING.md). The
+Render notes below apply until cutover.
+
 The root `render.yaml` is **free testing only**, per the user's choice. The free
 PostgreSQL database expires after 30 days, and the web service may sleep. The
 `render.production-proposal.yaml` is an unapproved proposal, not an active deployment.

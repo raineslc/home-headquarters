@@ -32,6 +32,12 @@ participation. No further approval is needed merely to develop reversible local 
 - [x] FND-02 Versioned schema, locked migration startup, security checks and isolated PostgreSQL CI.
 - [ ] FND-03 Production durable hosting/backups and retention decision. Free PostgreSQL expiry
   last recorded November 11, 2026, 9:56 PM Eastern; verify current provider state. Costs need approval.
+  **In progress (Claude Code).** Owner approved Google Cloud Run (us-east4) + Neon PostgreSQL 17
+  on October 14 (aim: $0/month with a budget alert; free run.app address for now). Code: Dockerfile,
+  platform-neutral settings (APP_HOSTNAME, proxy header for Cloud Run, APP_COMMIT), deploy job with
+  Workload Identity Federation and a migration job, Cloud Shell scripts deploy/gcp-setup.sh and
+  deploy/copy-database.sh, runbook docs/HOSTING.md. Remaining: owner runs setup and copy, first
+  Cloud Run deploy, verification, final copy and cutover, retire Render after November 11 fallback.
 - [ ] REC-01 Versioned export of **all** household organizer data, validated restore with
   recovery point before replacement, conflict handling and isolated-environment recovery drill.
   **Implemented, hosted drill pending (Claude Code).** Export format version 2 covers notes,

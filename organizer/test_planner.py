@@ -192,3 +192,11 @@ class PlannerTests(TestCase):
         self.assertContains(response, '<code>790fc54</code>')
         self.assertContains(response, 'https://github.com/raineslc/home-headquarters/commit/790fc54b622eac38df1ac960511f1ecdb80169c2')
         self.assertContains(response, 'from main')
+
+    def test_version_uses_the_cloud_run_commit_when_present(self):
+        from unittest.mock import patch
+        env = {'APP_COMMIT': 'abcdef1234567890abcdef1234567890abcdef12', 'APP_BRANCH': 'main', 'RENDER_GIT_COMMIT': '1111111111111111111111111111111111111111'}
+        with patch.dict('os.environ', env):
+            response = self.client.get('/settings/')
+        self.assertContains(response, '<code>abcdef1</code>')
+        self.assertNotContains(response, '<code>1111111</code>')

@@ -1,0 +1,43 @@
+# Hosting: Google Cloud Run + Neon (FND-03)
+
+Owner approved October 14, 2026, after Render's free tier missed deploys and paused free
+deploys during an incident. Goal: about $0/month for one household, with a budget alert.
+
+| Piece | Service | Notes |
+|---|---|---|
+| App | Cloud Run `home-headquarters`, region us-east4 | Scales to zero; min 0, max 2 instances, 512 MiB |
+| Database | Neon PostgreSQL 17, US East (Virginia) | Free plan; use the **direct** (non-pooler) connection string, because `migrate_locked` holds a session advisory lock |
+| Secrets | Secret Manager (`hhq-*`) | Django key, database URL, Google client secret and token key, OpenAI key |
+| Images | Artifact Registry `hhq` (us-east4) | Cleanup keeps the 3 newest images |
+| Deploys | GitHub Actions `deploy-cloud-run` job | Workload Identity Federation, main branch only; no stored keys |
+| Migrations | Cloud Run job `hhq-migrate` | Runs before each web deploy, so cold starts stay fast |
+
+`GOOGLE_TOKEN_KEY` must be copied exactly from Render; it decrypts the stored Google refresh
+tokens. A new `DJANGO_SECRET_KEY` is generated, so everyone signs in once after the move.
+`BOOTSTRAP_TOKEN` and `OWNER_EMAIL` are not carried over: setup is already closed in the
+database (QA-04).
+
+## Steps
+
+1. **Backup:** download an export from Settings → Backup and restore on the current site.
+2. **Google Cloud setup:** in Google Cloud Shell, run `bash gcp-setup.sh PROJECT_ID` (from
+   `deploy/`). Values from Render → Environment are typed into hidden prompts. Then:
+   - add the printed repository variables (`GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`,
+     `APP_HOSTNAME`, `GOOGLE_CLIENT_ID`) in GitHub → Settings → Secrets and variables →
+     Actions → **Variables**;
+   - add the printed redirect URI to the Google sign-in client;
+   - create a budget alert (Billing → Budgets & alerts, $5, email at 50/90/100%).
+3. **Copy the database:** allow Cloud Shell's address in Render → database → Networking, run
+   `bash copy-database.sh`, confirm "Row counts match", then remove the address again.
+4. **Deploy:** the next merge to main (or re-running the latest main workflow) builds the
+   image, runs migrations on Neon and deploys. The job checks `/health/` afterwards.
+5. **Check the new site:** sign in, view calendar, tasks and lunches, Google calendars (Sync
+   now), and Settings → App version shows the deployed commit.
+6. **Cutover:** stop making changes on Render, run `copy-database.sh` again for a final copy,
+   check again, then use the new address. Keep Render until November 11 as a read-only fallback.
+
+## Costs to watch
+
+Cloud Run, Secret Manager and Artifact Registry have monthly free allowances that one family
+should stay well inside; Neon's free plan has no expiry. Prices and allowances change, so the
+budget alert is the safety net. Any paid upgrade needs the owner's approval.
