@@ -4,6 +4,7 @@ from organizer import views
 from organizer import planner
 from organizer import connections, invitations
 from organizer import assistant
+from organizer import pwa
 
 urlpatterns = [
     path('assistant/', assistant.index, name='assistant'),
@@ -25,6 +26,9 @@ urlpatterns = [
     path('settings/parents/<uuid:pk>/cancel/', invitations.cancel, name='cancel_invite'),
     path('join/', invitations.join, name='parent_join'),
     path('health/', views.health),
+    path('manifest.webmanifest', pwa.manifest, name='manifest'),
+    path('sw.js', pwa.service_worker, name='service_worker'),
+    path('offline/', pwa.offline, name='offline'),
     path('sign-in/', views.SignIn.as_view(), name='login'),
     path('sign-out/', LogoutView.as_view(), name='logout'),
     path('setup/', views.setup, name='setup'),

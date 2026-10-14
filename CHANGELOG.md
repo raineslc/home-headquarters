@@ -4,6 +4,17 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Installable Android app and phone layout
+
+- Author: Claude Code. Tasks: APP-01 (owner request), QA-02 phone pass.
+- Home Headquarters can be installed on Android from Chrome ("Install app"): manifest, icons
+  (including Android's maskable shape), home-screen shortcuts, an Install banner and a Settings
+  card. The service worker caches only app files and shows an offline page; family pages are
+  never stored on the phone.
+- Phones get a bottom tab bar, a week view listing days top to bottom, a month view that fits
+  all seven days, and larger tap targets. Desktop is unchanged.
+- Validation: 94 organizer tests; headless Edge installability and offline check; 375px audit.
+
 ## 2026-10-14 — App version in Settings
 
 - Author: Claude Code. Task: OPS-01 (owner request).
