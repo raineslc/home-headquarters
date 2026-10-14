@@ -7,6 +7,10 @@ from django.db.models import Q
 from .models import Activity, FamilyMember, Task
 from .recurrence import WEEKDAYS, WEEKDAY_NAMES, build_rule, first_on_or_after, rule_fields
 
+def has_family_calendar(household):
+    from .models import FamilyCalendar
+    return FamilyCalendar.objects.filter(household=household).exists()
+
 REPEATS = [('', 'Does not repeat'), ('DAILY', 'Daily'), ('WEEKLY', 'Weekly'), ('MONTHLY', 'Monthly'), ('YEARLY', 'Yearly')]
 
 REPEAT_NAMES = ['repeat', 'interval', 'weekdays', 'monthly_by', 'ends', 'until', 'count']
@@ -74,9 +78,9 @@ class MemberForm(VersionForm):
 class ActivityForm(VersionForm):
     class Meta:
         model = Activity
-        fields = ['title', 'start_date', 'start_time', 'end_date', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes']
+        fields = ['title', 'start_date', 'start_time', 'end_date', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes', 'google_sync']
         widgets = {'start_date': forms.DateInput(attrs={'type': 'date'}), 'end_date': forms.DateInput(attrs={'type': 'date'}), 'start_time': forms.TimeInput(attrs={'type': 'time'}), 'end_time': forms.TimeInput(attrs={'type': 'time'}), 'participants': forms.CheckboxSelectMultiple(), 'notes': forms.Textarea(attrs={'rows': 3})}
-        labels = {'end_date': 'Last day', 'participants': 'Who is going?'}
+        labels = {'end_date': 'Last day', 'participants': 'Who is going?', 'google_sync': 'Also add to the family Google calendar'}
 
     def __init__(self, *args, household, repeat=False, realign='', **kwargs):
         super().__init__(*args, household=household, **kwargs)
@@ -89,6 +93,11 @@ class ActivityForm(VersionForm):
         if 'reminder_minutes' in self.fields:
             from .assistant_forms import REMINDERS
             self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Reminder preference (delivery not enabled)')
+        if 'google_sync' in self.fields:
+            if not has_family_calendar(household) and not self.instance.google_sync:
+                del self.fields['google_sync']  # nothing to choose until the family Google calendar exists
+            elif self.instance._state.adding:
+                self.fields['google_sync'].initial = True
 
     def clean(self):
         data = super().clean()
@@ -185,7 +194,7 @@ class BulkActivityForm(ActivityForm):
     batch = forms.UUIDField(widget=forms.HiddenInput)
 
     class Meta(ActivityForm.Meta):
-        fields = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes']
+        fields = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes', 'google_sync']
 
     def clean(self):
         data = super().clean()

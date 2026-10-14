@@ -91,6 +91,15 @@ class Activity(models.Model):
     occurrence_date = models.DateField(null=True, blank=True)
     # Activities added together on several dates share a batch ID; it makes the bulk create idempotent.
     batch = models.UUIDField(null=True, blank=True, db_index=True)
+    # Optional copy in the household's family Google calendar (GGL-02). The app is the source of truth.
+    google_sync = models.BooleanField(default=False)
+    google_calendar = models.ForeignKey('GoogleCalendar', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    google_event_id = models.CharField(max_length=1024, blank=True)
+    google_etag = models.CharField(max_length=255, blank=True)
+    google_state = models.CharField(max_length=12, blank=True, choices=[
+        ('synced', 'In Google Calendar'), ('pending', 'Waiting for Google'), ('failed', 'Google update failed'),
+        ('conflict', 'Changed in Google'), ('removed', 'Deleted in Google')])
+    google_error = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ['start_date', 'start_time', 'title']
@@ -150,6 +159,8 @@ class GoogleConnection(models.Model):
     encrypted_refresh_token = models.TextField()
     needs_reconnect = models.BooleanField(default=False)
     version = models.PositiveIntegerField(default=1)
+    # Granted only by an explicit opt-in; lets the app manage calendars it created (calendar.app.created).
+    can_write = models.BooleanField(default=False)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['household', 'subject'], name='one_google_account_per_household')]
@@ -169,6 +180,20 @@ class GoogleCalendar(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['connection', 'external_id'], name='one_calendar_per_connection')]
+
+class FamilyCalendar(models.Model):
+    """The one app-created Google calendar a household writes activities to."""
+    household = models.OneToOneField(Household, on_delete=models.CASCADE, related_name='family_calendar')
+    calendar = models.OneToOneField(GoogleCalendar, on_delete=models.CASCADE, related_name='family_for')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class GooglePendingDeletion(models.Model):
+    """A Google event whose local activity was deleted but whose Google copy is not yet removed."""
+    calendar = models.ForeignKey(GoogleCalendar, on_delete=models.CASCADE, related_name='pending_deletions')
+    event_id = models.CharField(max_length=1024)
+    title = models.CharField(max_length=200)
+    error = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class GoogleEvent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

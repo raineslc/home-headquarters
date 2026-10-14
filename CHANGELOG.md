@@ -4,6 +4,21 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Family Google calendar (writes)
+
+- Author: Claude Code. Task: GGL-02 (implemented; live verification pending).
+- Owner decisions: an app-created "Home Headquarters" calendar using the narrowest write scope
+  (calendar.app.created), and a per-activity "Also add to the family Google calendar" choice.
+- One parent opts in from the Google calendars page; existing read-only connections are
+  unchanged, and every sign-in now keeps earlier grants.
+- Saving, editing, unticking or deleting an activity updates Google after the local save.
+  Retries never duplicate; edits made in Google are never overwritten without a choice;
+  events deleted in Google can be re-added; failed deletions stay queued; repeating series and
+  changed occurrences are supported; restores and "Stop updating Google" leave Google alone.
+- Migration 0009. Validation: 89 organizer tests (Google simulated) on local PostgreSQL.
+- Limitations: edits made in Google are not copied back; the scope must be added in Google
+  Cloud before use; not yet verified against a real Google account.
+
 ## 2026-10-14 — Assistant regression cases and repeat suggestions
 
 - Author: Claude Code. Task: AI-04 (implemented; first live evaluation pending).

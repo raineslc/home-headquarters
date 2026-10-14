@@ -17,7 +17,8 @@ children need packed lunches. AI helps organize and prepare research; humans app
 Working preview, **not production-ready**. Includes authenticated household access,
 editable family profiles, parent invitations, calendar week/month/Upcoming agenda, one-off
 and repeating activities, linked and repeating tasks, high priority, monthly lunch planning, read-only Google
-connections, and real OpenAI draft/review/approval with explicit external task searches.
+connections plus an opt-in family Google calendar the app writes to, and real OpenAI draft/review/approval
+with explicit external task searches.
 Chris's Google connection and hosted AI have been verified. Melissa's live sign-in and
 calendar connection still need verification. See docs/verification.md for evidence.
 
@@ -33,6 +34,10 @@ requirements, not optional polish.
   Due in 1 day), compact inline Add activity/Add task, assistant input.
 - "Add on several dates" adds one activity on many chosen dates after a review step.
 - Agenda is a rolling seven-day Upcoming list of events and due tasks with an Overdue list.
+- Google writes (owner decision, October 14, 2026): the app creates its own "Home Headquarters"
+  calendar with the narrowest scope (calendar.app.created) and never changes other calendars.
+  Each activity chooses whether it is added (on by default once set up). The app is the source
+  of truth; edits made in Google are not copied back and are never overwritten silently.
 - Repeating times on clock-change days follow Option A: skipped times move forward, repeated
   times use the first (owner decision, October 14, 2026; matches Google Calendar).
 - No oversized greetings, slogans, decorative banners or setup details in everyday views.

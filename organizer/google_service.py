@@ -1,4 +1,7 @@
-"""Read-only Google access. Provider payloads and credentials must never be logged."""
+"""Google access: read-only sync, plus opt-in writes to one app-created calendar (google_writes).
+
+Provider payloads and credentials must never be logged."""
+import os
 from datetime import date, datetime, timedelta, time
 from functools import partial
 from urllib.parse import quote, urlparse
@@ -17,6 +20,11 @@ from .models import GoogleCalendar, GoogleConnection, GoogleEvent
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email',
           'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
           'https://www.googleapis.com/auth/calendar.events.readonly']
+# Reconnecting keeps earlier grants (include_granted_scopes), so Google may return more scopes
+# than requested. Granted scopes are checked explicitly in connections.callback.
+os.environ.setdefault('OAUTHLIB_RELAX_TOKEN_SCOPE', '1')
+# Narrowest write permission: only calendars this app creates. Requested separately, by opt-in.
+WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created'
 COLORS = ['blue', 'purple', 'orange', 'green']
 
 class GoogleUnavailable(Exception):
@@ -25,25 +33,28 @@ class GoogleUnavailable(Exception):
 class ReconnectRequired(GoogleUnavailable):
     pass
 
+class WritePermissionLost(GoogleUnavailable):
+    pass
+
 def configured():
     return bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET and settings.GOOGLE_TOKEN_KEY)
 
 def cipher():
     return Fernet(settings.GOOGLE_TOKEN_KEY.encode())
 
-def flow(**kwargs):
+def flow(write=False, **kwargs):
     return Flow.from_client_config({'web': {
         'client_id': settings.GOOGLE_CLIENT_ID, 'client_secret': settings.GOOGLE_CLIENT_SECRET,
         'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
         'token_uri': 'https://oauth2.googleapis.com/token',
-    }}, scopes=SCOPES, redirect_uri=settings.GOOGLE_REDIRECT_URI, **kwargs)
+    }}, scopes=SCOPES + [WRITE_SCOPE] if write else SCOPES, redirect_uri=settings.GOOGLE_REDIRECT_URI, **kwargs)
 
-def access_token(connection):
+def access_token(connection, write=False):
     try:
         refresh = cipher().decrypt(connection.encrypted_refresh_token.encode()).decode()
         credentials = Credentials(None, refresh_token=refresh,
             token_uri='https://oauth2.googleapis.com/token', client_id=settings.GOOGLE_CLIENT_ID,
-            client_secret=settings.GOOGLE_CLIENT_SECRET, scopes=SCOPES)
+            client_secret=settings.GOOGLE_CLIENT_SECRET, scopes=SCOPES + [WRITE_SCOPE] if write else SCOPES)
         credentials.refresh(partial(Request(session=requests.Session()), timeout=20))
         return credentials.token
     except GoogleAuthError as error:
@@ -51,6 +62,10 @@ def access_token(connection):
         if 'invalid_grant' in str(error):
             GoogleConnection.objects.filter(pk=connection.pk).update(needs_reconnect=True)
             raise ReconnectRequired('Google access expired. Connect this account again.') from None
+        if write and 'invalid_scope' in str(error):
+            # The parent removed the write permission; reading may still work.
+            GoogleConnection.objects.filter(pk=connection.pk).update(can_write=False)
+            raise WritePermissionLost('Permission to update the family Google calendar was removed. Set it up again on the Google calendars page.') from None
         raise GoogleUnavailable('Google is temporarily unavailable. Try syncing again shortly.') from None
     except (InvalidToken, ValueError, requests.RequestException):
         raise GoogleUnavailable('The connection could not be opened. Please try again or reconnect.') from None
@@ -184,7 +199,12 @@ def shared_events(household, start, end):
         calendar__connection__owner__membership__household=household,
         calendar__visibility__in=['busy', 'details'], start_date__lte=end, end_date__gte=start).select_related('calendar__connection__owner')
     unique = {}
+    from .google_writes import linked_event_ids
+    written = linked_event_ids(household)
     for event in rows:
+        # Events the app wrote are already shown as activities; recurring copies use "<id>_<instance>".
+        if event.external_id in written or event.external_id.split('_')[0] in written:
+            continue
         key = (event.calendar.external_id, event.external_id)
         # The more private choice wins if both accounts select the same shared calendar.
         if key not in unique or event.title == 'Busy':

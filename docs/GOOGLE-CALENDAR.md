@@ -28,8 +28,37 @@ Set the following only in Render's secret environment settings:
 
 Requested scopes: `openid`, `userinfo.email`, `calendar.calendarlist.readonly`,
 `calendar.events.readonly` (Google's standard full scope URLs in google_service.py).
-This version cannot write to Google calendars. A writable shared family calendar
-remains a separate first-release requirement.
+Every sign-in sends `include_granted_scopes=true`, so reconnecting keeps earlier grants.
+
+Optional write scope: `https://www.googleapis.com/auth/calendar.app.created`, requested only
+when a parent chooses "Create the family calendar". It lets the app create calendars and
+manage events only on calendars it created; it cannot read or change any other calendar.
+**Before using it, add this scope in Google Cloud Console → Google Auth Platform → Data
+access** for the dedicated OAuth client. In Testing mode, both parents remain test users.
+
+## Family Google calendar (writes)
+
+One parent chooses "Create the family calendar in <their account>" on the Google calendars
+page. Google asks for the extra permission; the app creates a "Home Headquarters" calendar in
+that account. Share it with the other parent in Google Calendar (Settings and sharing →
+Share with specific people) so it appears on both phones.
+
+Each activity then has "Also add to the family Google calendar" (on by default). Saving,
+editing, unticking or deleting an activity updates Google after the change is saved here; a
+Google problem never blocks or undoes the local change. The activity page shows the Google
+status with Retry. Repeating series are sent as Google repeating events (with skipped dates);
+a changed occurrence is a separate event.
+
+- Edits made in Google are not copied back. If an event was changed in Google, the app stops
+  and asks: use this version in Google, or keep Google's version and stop updating it.
+- If an event was deleted in Google, it can be added again or left deleted.
+- Deleting an activity removes its Google copy; if Google cannot be reached it stays queued
+  under "Update Google now" on the Google calendars page.
+- "Stop updating Google" keeps the calendar and its events in Google.
+- Restoring a backup never changes the family Google calendar; restored activities start
+  unticked.
+- If that parent removes the permission or disconnects, updates fail visibly until the
+  calendar is set up again.
 
 Tokens are encrypted at rest with Fernet; only the refresh token is persisted.
 Access tokens remain in server memory. OAuth uses session-bound state, expiry,
@@ -71,6 +100,6 @@ calendar appearing in Overview, followed by a real Google change and resync.
 ## Recovery limits
 
 Migration 0004 adds connection/cache/invitation tables without changing existing
-plans. Household exports omit Google connections, calendars and cached events.
+plans. Migration 0009 adds the family calendar, write status fields and pending deletions. Household exports omit Google connections, calendars and cached events.
 Provider caches can be rebuilt by reconnecting and syncing; household exports
 cover local organizer data only. Never include tokens or invitation hashes in a user-facing export.

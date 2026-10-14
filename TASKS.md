@@ -6,6 +6,7 @@ Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recov
 DASH-03 and CAL-02/TSK-02 recurrence are merged (owner chose Option A for clock-change times).
 Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14; both are done.
 AI-04 is implemented; its first live evaluation run needs the owner's API key (see below).
+GGL-02 is implemented (owner chose an app-created calendar and per-activity choice); live setup pending.
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -16,7 +17,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **AI-04** live evaluation run (owner key), then **GGL-02** Google writes.
+3. **GGL-02** live setup (add the calendar.app.created scope in Google Cloud, deploy, one parent opts in) and AI-04 live run.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -93,6 +94,19 @@ participation. No further approval is needed merely to develop reversible local 
 - [ ] GGL-02 Create/edit in an explicitly selected writable shared family Google calendar.
   Respect permissions, scope/consent changes, concurrent edits, retries and deletions. Current
   read-only scopes do not permit writes; preserve existing grants until approved migration.
+  **Implemented, live verification pending (Claude Code).** Owner decisions (October 14): the
+  app creates its own "Home Headquarters" calendar using the narrowest write scope
+  (calendar.app.created, opt-in per parent via incremental consent; existing read-only grants
+  are kept and every sign-in now preserves earlier grants), and each activity has an "Also add
+  to the family Google calendar" choice (default on once set up). Writes run after commit;
+  deterministic event IDs make retries idempotent; ETag If-Match prevents overwriting edits
+  made in Google (conflict: use this version / keep Google's and stop); deleted-in-Google can
+  be re-added or unlinked; local deletes queue Google removals with retry; repeating series
+  send RRULE/EXDATE and changed occurrences are separate events; restores and "Stop updating
+  Google" never edit or delete Google events; app-written events are not shown twice from the
+  read cache. Migration 0009. Mocked-provider tests. Remaining: add the scope to the Google
+  Cloud consent screen, deploy, set up the calendar, and verify a real create/edit/delete and
+  sharing with the other parent. Edits made in Google are not copied back (by design).
 - [ ] GGL-03 Melissa's own live connection/selected visibility and shared overview verification.
 - [ ] GGL-04 Scheduled sync while app closed, durable retries and operational monitoring.
   Confirm OAuth testing-mode expiry/reconnection and production consent requirements.
@@ -169,17 +183,17 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: AI-04 assistant regression cases, evaluation command, repeat
-  proposals and server guards. CAL-03 (PR 5) merged earlier the same day.
-- Starting canonical GitHub commit: `eb4ffe6849cd53bdacb327496670649b833b678b` (merged PR 5); branch `ai-04-assistant-cases`.
+- Assistant: Claude Code. Change: GGL-02 family Google calendar writes (migration 0009).
+  AI-04 (PR 6) merged earlier the same day.
+- Starting canonical GitHub commit: `790fc54b622eac38df1ac960511f1ecdb80169c2` (merged PR 6); branch `ggl-02-google-writes`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 79 organizer
-  tests passed, deploy check and migration drift check passed; local review-page visual check.
-  The live provider evaluation was not run (no API key on this machine).
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 89 organizer
+  tests passed (Google calls simulated), deploy check and migration drift check passed; local
+  visual check of the Google sections. No real Google calendar was created or changed.
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, Google writes/reminder delivery. Next: merge AI-04, run assistant_eval, REC-01 drill, FND-03.
+  participation, reminder delivery. Next: merge GGL-02, Google Cloud scope + live setup, assistant_eval, REC-01 drill, FND-03.
 
 ## Deferred until first release works
 
