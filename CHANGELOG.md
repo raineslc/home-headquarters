@@ -4,6 +4,16 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Upcoming seven-day agenda
+
+- Author: Claude Code. Task: DASH-03.
+- Agenda view is now "Upcoming": a rolling seven days from the chosen date (default today)
+  showing events and open due tasks with time, assignee, high priority and linked activity,
+  high-priority tasks first, plus an Overdue list when today is in range. Overview's removed
+  "Next seven days" section stays removed; week and month views are unchanged.
+- Validation: 44 organizer tests on local isolated PostgreSQL; phone-width visual check on a
+  local test database. No schema change.
+
 ## 2026-10-14 — Full household export and restore
 
 - Author: Claude Code. Task: REC-01 (implemented; hosted recovery drill pending).

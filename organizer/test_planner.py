@@ -122,3 +122,34 @@ class PlannerTests(TestCase):
         values['version'] = event.version
         self.assertEqual(self.client.post(f'/plan/activity/{event.pk}/edit/', values).status_code, 302)
         self.assertEqual(event.participants.count(), 1)
+
+    def test_agenda_is_a_rolling_seven_day_upcoming_list_with_tasks(self):
+        from datetime import time, timedelta
+        from zoneinfo import ZoneInfo
+        from django.utils import timezone
+        today = timezone.localdate(timezone=ZoneInfo(self.house.timezone))
+        event = Activity.objects.create(household=self.house, title='Sixth-day game', start_date=today + timedelta(days=6), end_date=today + timedelta(days=6))
+        timed = Task.objects.create(household=self.house, title='Timed task', assignee=self.child, activity=event, due_date=today + timedelta(days=3), due_time=time(9))
+        urgent = Task.objects.create(household=self.house, title='Urgent untimed task', high_priority=True, due_date=today + timedelta(days=3))
+        late = Task.objects.create(household=self.house, title='Overdue task', due_date=today - timedelta(days=2))
+        Task.objects.create(household=self.house, title='Completed task', due_date=today + timedelta(days=1), completed_at=timezone.now())
+        Task.objects.create(household=self.house, title='Eighth-day task', due_date=today + timedelta(days=7))
+        Task.objects.create(household=self.other, title='Other household task', due_date=today)
+        response = self.client.get('/?view=agenda')
+        cells = response.context['cells']
+        self.assertEqual([cell['date'] for cell in cells], [today + timedelta(days=i) for i in range(7)])
+        self.assertIn(event, cells[6]['events'])
+        self.assertEqual(cells[3]['tasks'], [urgent, timed])
+        self.assertEqual(response.context['overdue'], [late])
+        self.assertContains(response, 'Upcoming')
+        self.assertContains(response, 'For Sixth-day game')
+        self.assertContains(response, 'Fixture child')
+        for hidden in ('Completed task', 'Eighth-day task', 'Other household task'):
+            self.assertNotContains(response, hidden)
+        later = self.client.get('/?view=agenda&date=' + (today + timedelta(days=10)).isoformat())
+        self.assertEqual(later.context['cells'][0]['date'], today + timedelta(days=10))
+        self.assertEqual(later.context['overdue'], [])
+        # Week view still aligns to Monday and does not show the overdue list.
+        week = self.client.get('/?date=' + today.isoformat())
+        self.assertEqual(week.context['cells'][0]['date'].weekday(), 0)
+        self.assertEqual(week.context['overdue'], [])
