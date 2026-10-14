@@ -73,6 +73,7 @@ class Activity(models.Model):
     notes = models.TextField(max_length=5000, blank=True)
     participants = models.ManyToManyField(FamilyMember, blank=True)
     version = models.PositiveIntegerField(default=1)
+    reminder_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['start_date', 'start_time', 'title']
@@ -92,6 +93,9 @@ class Task(models.Model):
     notes = models.TextField(max_length=5000, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)
+    reminder_minutes = models.PositiveIntegerField(null=True, blank=True)
+    search_prompt = models.CharField(max_length=500, blank=True)
+    search_questions = models.CharField(max_length=500, blank=True)
 
     class Meta:
         ordering = ['-high_priority', 'due_date', 'title']
@@ -159,3 +163,43 @@ class GoogleEvent(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=['calendar', 'external_id'], name='one_event_per_calendar')]
         ordering = ['start_date', 'start_time', 'title']
+
+class AssistantPlan(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    request_key = models.UUIDField(unique=True)
+    title = models.CharField(max_length=200)
+    messages = models.JSONField(default=list)
+    reply = models.TextField(blank=True)
+    questions = models.JSONField(default=list)
+    status = models.CharField(max_length=12, default='generating')
+    error = models.CharField(max_length=300, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class AssistantSuggestion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(AssistantPlan, on_delete=models.CASCADE, related_name='suggestions')
+    revision = models.PositiveIntegerField()
+    kind = models.CharField(max_length=10, choices=[('event', 'Event'), ('task', 'Task')])
+    position = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, default='pending', choices=[('pending', 'Awaiting approval'), ('approved', 'Approved'), ('dismissed', 'Dismissed'), ('superseded', 'Earlier draft')])
+    payload = models.JSONField()
+    activity = models.ForeignKey(Activity, null=True, on_delete=models.SET_NULL)
+    task = models.ForeignKey(Task, null=True, on_delete=models.SET_NULL)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    decided_at = models.DateTimeField(null=True)
+
+    class Meta:
+        ordering = ['position', 'id']
+
+class AssistantUsage(models.Model):
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    date = models.DateField()
+    attempts = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['household', 'date'], name='one_ai_usage_per_household_day')]

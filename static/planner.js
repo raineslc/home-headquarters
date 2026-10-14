@@ -19,3 +19,10 @@ document.querySelectorAll('.quick-panel').forEach(panel => {
     if (panel.open) panel.querySelector('input[name$="-title"]').focus();
   });
 });
+document.querySelectorAll('[data-ai-request]').forEach(form => {
+  form.addEventListener('submit', () => {
+    const progress = form.querySelector('.ai-progress');
+    if (progress) progress.hidden = false;
+    form.querySelectorAll('button[type="submit"]').forEach(button => { button.disabled = true; });
+  });
+});

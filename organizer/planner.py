@@ -1,4 +1,6 @@
 import calendar
+import uuid
+from django.conf import settings as app_settings
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 from django.contrib import messages
@@ -79,6 +81,8 @@ def quick_entry(request, task_page=False):
 @require_http_methods(['GET', 'POST'])
 def dashboard(request):
     quick_context, response = quick_entry(request)
+    quick_context['assistant_request_key'] = uuid.uuid4()
+    quick_context['assistant_ready'] = bool(app_settings.OPENAI_API_KEY)
     if response is not None:
         return response
     day = chosen_date(request)

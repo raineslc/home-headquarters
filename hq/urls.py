@@ -3,8 +3,13 @@ from django.contrib.auth.views import LogoutView
 from organizer import views
 from organizer import planner
 from organizer import connections, invitations
+from organizer import assistant
 
 urlpatterns = [
+    path('assistant/', assistant.index, name='assistant'),
+    path('assistant/<uuid:pk>/', assistant.detail, name='assistant_plan'),
+    path('assistant/<uuid:pk>/revise/', assistant.revise, name='assistant_revise'),
+    path('tasks/<uuid:pk>/search/', assistant.task_search, name='task_search'),
     path('connections/google/', connections.index, name='google_connections'),
     path('connections/google/connect/', connections.begin, name='google_begin'),
     path('connections/google/callback/', connections.callback, name='google_callback'),

@@ -21,7 +21,7 @@ class MemberForm(VersionForm):
 class ActivityForm(VersionForm):
     class Meta:
         model = Activity
-        fields = ['title', 'start_date', 'start_time', 'end_date', 'end_time', 'all_day', 'participants', 'location', 'notes']
+        fields = ['title', 'start_date', 'start_time', 'end_date', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes']
         widgets = {'start_date': forms.DateInput(attrs={'type': 'date'}), 'end_date': forms.DateInput(attrs={'type': 'date'}), 'start_time': forms.TimeInput(attrs={'type': 'time'}), 'end_time': forms.TimeInput(attrs={'type': 'time'}), 'participants': forms.CheckboxSelectMultiple(), 'notes': forms.Textarea(attrs={'rows': 3})}
         labels = {'end_date': 'Last day', 'participants': 'Who is going?'}
 
@@ -30,6 +30,9 @@ class ActivityForm(VersionForm):
         included = self.instance.participants.values_list('pk', flat=True) if not self.instance._state.adding else []
         if 'participants' in self.fields:
             self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
+        if 'reminder_minutes' in self.fields:
+            from .assistant_forms import REMINDERS
+            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Reminder preference (delivery not enabled)')
 
     def clean(self):
         data = super().clean()
@@ -60,7 +63,7 @@ class ActivityForm(VersionForm):
 class TaskForm(VersionForm):
     class Meta:
         model = Task
-        fields = ['title', 'high_priority', 'assignee', 'due_date', 'due_time', 'activity', 'notes']
+        fields = ['title', 'high_priority', 'assignee', 'due_date', 'due_time', 'activity', 'notes', 'reminder_minutes', 'search_prompt', 'search_questions']
         widgets = {'due_date': forms.DateInput(attrs={'type': 'date'}), 'due_time': forms.TimeInput(attrs={'type': 'time'}), 'notes': forms.Textarea(attrs={'rows': 3})}
         labels = {'activity': 'Preparation for activity', 'assignee': 'Responsible person'}
 
@@ -70,11 +73,18 @@ class TaskForm(VersionForm):
         self.fields['assignee'].empty_label = 'Household'
         if 'activity' in self.fields:
             self.fields['activity'].queryset = Activity.objects.filter(household=household)
+        if 'reminder_minutes' in self.fields:
+            from .assistant_forms import REMINDERS
+            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Reminder preference (delivery not enabled)')
+        if 'search_questions' in self.fields:
+            self.fields['search_questions'].label = 'Details to check before searching'
 
     def clean(self):
         data = super().clean()
         if data.get('due_time') and not data.get('due_date'):
             self.add_error('due_date', 'Choose a date for this deadline.')
+        if data.get('reminder_minutes') and not data.get('due_date'):
+            self.add_error('due_date', 'Choose a deadline to save a reminder preference.')
         return data
 
 class QuickActivityForm(ActivityForm):
