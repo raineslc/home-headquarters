@@ -5,7 +5,7 @@ Do not infer completion from a build or a screenshot.
 | Gate | Result |
 |---|---|
 | Separate local project | Created; synced sources untouched |
-| Dedicated API key | Created securely and saved in ignored .env.local; not deployed or exercised |
+| Dedicated API key | Stored privately on Render with explicit approval October 14; real hosted Responses API proposal succeeded |
 | Node can launch Git | EPERM in sandbox; successful with approved external execution |
 | New private source repository | raineslc/home-headquarters; privacy verified |
 | Render workspace | Home Headquarters; selected by user; initially empty |
@@ -21,9 +21,9 @@ Do not infer completion from a build or a screenshot.
 | Browser accessibility/responsive QA | Desktop dashboard and lunch layout checked. Phone viewport override had no effect; mobile visual QA remains pending |
 | Unattended scheduler execution | Pending paid scheduling approval |
 | Reminder delivery while app closed | Not implemented; unverified |
-| Calendar synchronization | Not implemented; unverified |
+| Calendar synchronization | Chris connected; selected calendars manually synced and Google event verified in unified calendar. Scheduled sync and writes remain pending |
 
-The current artifact is a preview, not the full family organizer release. Planner migration 0002 adds family profiles, one-off activities, preparation tasks and lunch plans. Full planner recovery, invitations, recurrence, Google sync, AI and reminders remain outstanding.
+The current artifact is a preview, not the full family organizer release. Family profiles, one-off activities, linked tasks, monthly lunch plans, invitations, read-only Google connections and approval-based AI are implemented. Full planner recovery, recurrence, Google writes, unattended sync and reminder delivery remain outstanding.
 
 Test URL: https://home-headquarters-test.onrender.com
 
@@ -39,3 +39,13 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Chris, Melissa, Logan and Henry were created through the live family form using the user-provided names and roles; these are editable database records, not schema fixtures.
 - Live lunch test applied Pack lunch to October 13 and 14 for Henry, verified Today, then used Undo. Both dates returned to Not decided.
 - No sample activities/tasks were added to the real household. Their workflows were verified with isolated PostgreSQL test data in CI.
+
+## AI assistant, October 14, 2026
+
+- Migration 0005 adds proposal history, suggestions, usage limits, saved reminder preferences and task search prompts.
+- PostgreSQL CI run 38567894258 passed, including eight assistant workflow/security tests, commit da819bdcbeac24ffeea7699209cb3dda564c216e.
+- Render deployment dep-db7np4ui0phs739b9t10 succeeded; approved key configuration deployed as dep-db7npoqj9qps73d40kv0.
+- A real hosted birthday-party request returned an editable draft and resolved Saturday to October 17. No calendar event or task was approved or created during this live check.
+- That probe exposed an ambiguous gift-recipient assumption. Instructions were refined and a second real synthetic request returned a neutral Birthday party title, the three preparation tasks, and questions about recipient identity, age and budget.
+- Assistant changes are backed up in the ignored local Git bundle and private GitHub repository. Keys are excluded from both.
+- Reminder delivery remains disabled; the UI saves preferences without claiming notifications were scheduled.

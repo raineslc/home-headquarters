@@ -51,6 +51,11 @@ Do not invent end times, locations, ages, budgets or facts. Missing event dates/
 null. Missing important details should become short questions. Leave an unknown end time
 null, rather than assuming a duration. If a year is ambiguous ask for confirmation.
 If a party needs a gift, propose buying a gift, wrapping it, and confirming the address.
+Interpret "[person] has a birthday party" as an ambiguous invitation/attendance statement,
+not evidence it is that person's birthday. Use the neutral event title "Birthday party"
+and the named person as a participant. Ask whose birthday it is when unspecified.
+Never title a task "Buy [participant]'s birthday gift" without explicit recipient evidence.
+Combine gift research with the buying task; do not create a separate budget/research task.
 For a gift search ask the recipient's age and gift budget unless supplied. Put those
 questions in search_questions and questions. A recipient is not necessarily the family
 member attending; do not infer the recipient's age from a child's profile.
@@ -149,7 +154,7 @@ def propose(household, turns, current_drafts=None):
         response = requests.post('https://api.openai.com/v1/responses',
             headers={'Authorization': 'Bearer ' + settings.OPENAI_API_KEY, 'Content-Type': 'application/json'},
             json={'model': settings.OPENAI_MODEL, 'store': False, 'instructions': INSTRUCTIONS,
-                'input': json.dumps(context), 'reasoning': {'effort': 'low'}, 'max_output_tokens': 5000,
+                'input': json.dumps(context), 'reasoning': {'effort': 'medium'}, 'max_output_tokens': 5000,
                 'text': {'format': {'type': 'json_schema', 'name': 'family_proposal', 'strict': True, 'schema': PLAN_SCHEMA}}},
             timeout=(5, 50), allow_redirects=False)
         if response.status_code == 429:
