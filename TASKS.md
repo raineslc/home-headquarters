@@ -39,7 +39,7 @@ participation. No further approval is needed merely to develop reversible local 
   (references and suggestion payload member IDs remapped). Version 1 notes exports still
   restore notes only. `export_household` writes an operator export. Local PostgreSQL tests
   include a round-trip drill into a separate household and undo via recovery point.
-  Remaining: CI on the pushed commit, deploy, download a real export, and restore it into an
+  PostgreSQL 17 CI 38578064839 passed (commit 4c1323b). Remaining: merge, deploy, download a real export, and restore it into an
   isolated hosted environment (never the live household) to confirm. Known limit: AI plan
   generation does not bump the household version, so a generation finishing mid-restore is
   not detected as a stale preview; the restore still succeeds atomically.
@@ -138,7 +138,7 @@ participation. No further approval is needed merely to develop reversible local 
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
 - Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 43 organizer
-  tests passed, deploy check, migration drift check and collectstatic passed. CI not yet run.
+  tests passed, deploy check, migration drift check and collectstatic passed. GitHub Actions CI 38578064839 passed on 4c1323b.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
   participation, recurrence/Google writes/reminder delivery. Next: merge, deploy, REC-01 drill, FND-03.
 

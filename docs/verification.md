@@ -54,4 +54,5 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - Branch rec-01-full-household-recovery adds export format version 2, validated replacing restore, migration 0006 (PendingRestore) and the export_household command.
 - Local isolated PostgreSQL 16 (portable pgserver build; CI uses 17) with Python 3.11: 43 organizer tests passed, including a round-trip recovery drill into a separate household, same-household restore and undo via recovery point, 20 invalid-export cases, per-parent/expiring previews, stale-preview rejection, version 1 compatibility and secret exclusion. Deploy check, migration drift check and collectstatic passed.
-- Not yet verified: GitHub Actions CI on the pushed commit, deployment, a real export downloaded from the live preview, and restore of that export into an isolated hosted environment. The real household database was not touched.
+- GitHub Actions CI run 38578064839 (PostgreSQL 17, Python 3.13.7) passed for commit 4c1323b3e4909f872bf780247abc75153811aa7a.
+- Not yet verified: deployment, a real export downloaded from the live preview, and restore of that export into an isolated hosted environment. The real household database was not touched.

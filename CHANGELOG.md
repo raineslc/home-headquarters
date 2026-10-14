@@ -18,7 +18,8 @@ The containing Git commit identifies an entry; do not invent its own SHA before 
   restorable exports. Version 1 notes exports still restore notes only. run_jobs removes
   previews older than one day. Settings and foundation copy describe the full export.
 - Validation: 43 organizer tests on local isolated PostgreSQL 16, deploy check, migration drift
-  check and collectstatic passed. CI, deployment and the hosted drill are not yet verified.
+  check and collectstatic passed; GitHub Actions CI 38578064839 passed on 4c1323b.
+  Deployment and the hosted drill are not yet verified.
 - Limitations: AI plan generation does not bump the household version, so it is not detected
   as a stale-preview change; exports include parent emails as plan authors; no scheduled
   off-site export yet.
