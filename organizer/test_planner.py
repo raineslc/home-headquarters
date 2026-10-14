@@ -144,8 +144,9 @@ class PlannerTests(TestCase):
         self.assertContains(response, 'Upcoming')
         self.assertContains(response, 'For Sixth-day game')
         self.assertContains(response, 'Fixture child')
-        for hidden in ('Completed task', 'Eighth-day task', 'Other household task'):
+        for hidden in ('Completed task', 'Other household task'):
             self.assertNotContains(response, hidden)
+        self.assertNotIn('Eighth-day task', [t.title for cell in cells for t in cell['tasks']])
         later = self.client.get('/?view=agenda&date=' + (today + timedelta(days=10)).isoformat())
         self.assertEqual(later.context['cells'][0]['date'], today + timedelta(days=10))
         self.assertEqual(later.context['overdue'], [])
@@ -153,3 +154,32 @@ class PlannerTests(TestCase):
         week = self.client.get('/?date=' + today.isoformat())
         self.assertEqual(week.context['cells'][0]['date'].weekday(), 0)
         self.assertEqual(week.context['overdue'], [])
+
+    def test_overview_shows_all_open_tasks_with_quick_filters(self):
+        from datetime import timedelta
+        from zoneinfo import ZoneInfo
+        from django.utils import timezone
+        today = timezone.localdate(timezone=ZoneInfo(self.house.timezone))
+        def task(title, days=None, high=False, done=False):
+            return Task.objects.create(household=self.house, title=title, high_priority=high,
+                                       due_date=today + timedelta(days=days) if days is not None else None,
+                                       completed_at=timezone.now() if done else None)
+        overdue, today_task, tomorrow = task('Overdue', -3), task('Today', 0), task('Tomorrow', 1)
+        week, later, undated = task('In seven days', 7), task('In eight days', 8), task('No date')
+        urgent_later, urgent_undated = task('Urgent later', 30, high=True), task('Urgent undated', high=True)
+        task('Done', 0, done=True)
+        Task.objects.create(household=self.other, title='Other household', due_date=today)
+        def shown(key=None):
+            response = self.client.get('/' + (f'?tasks={key}' if key else ''))
+            return response, list(response.context['priorities'])
+        response, everything = shown()
+        self.assertEqual(everything, [urgent_later, urgent_undated, overdue, today_task, tomorrow, week, later, undated])
+        self.assertEqual({f['key']: f['count'] for f in response.context['task_filters']}, {'all': 8, 'high': 2, 'week': 4, 'day': 3})
+        self.assertContains(response, 'Task priorities')
+        self.assertEqual(shown('high')[1], [urgent_later, urgent_undated])
+        self.assertEqual(shown('week')[1], [overdue, today_task, tomorrow, week])
+        self.assertEqual(shown('day')[1], [overdue, today_task, tomorrow])
+        self.assertEqual(shown('bogus')[0].context['task_filter'], 'all')
+        Task.objects.filter(household=self.house).update(completed_at=timezone.now())
+        self.assertContains(self.client.get('/?tasks=day'), 'Nothing due today or tomorrow')
+

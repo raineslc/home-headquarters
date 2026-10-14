@@ -9,8 +9,8 @@ family profiles; monthly bulk lunch choices and version-protected undo; parent i
 per-parent read-only Google calendar sharing/manual sync; real OpenAI proposal review,
 clarification, edits, approval/dismissal and explicit external task searches.
 
-Overview combines local and selected Google events with due tasks. Weekly priorities
-include overdue work; high priority sorts first. School-lunch selections appear on the
+Overview combines local and selected Google events with due tasks. Task priorities list
+all open tasks, high priority first, with High priority, Due in 7 days and Due in 1 day filters. School-lunch selections appear on the
 calendar, packed lunches in the daily overview. The full lunch table and “Next seven days”
 section were removed from Overview by owner request. Quick activity/task forms are inline.
 

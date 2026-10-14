@@ -4,6 +4,14 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Overview task priority filters
+
+- Author: Claude Code. Task: DASH-04 (owner request, ahead of CAL-03).
+- Overview "Weekly priorities" (eight tasks) is now "Task priorities": every open task, high
+  priority first, then by due date and time with undated tasks last. Quick filters All,
+  High priority, Due in 7 days and Due in 1 day show counts; due filters include overdue work.
+- Validation: 67 organizer tests on local isolated PostgreSQL; local visual check. No schema change.
+
 ## 2026-10-14 — Repeating activities and tasks
 
 - Author: Claude Code. Tasks: CAL-02, TSK-02 (owner chose Option A for clock-change times).

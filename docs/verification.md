@@ -66,3 +66,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - Migration 0007 and python-dateutil 2.9.0.post0. 22 new isolated PostgreSQL/unit tests: rule building, description and validation; Option A spring-forward/fall-back times; multi-day overlap; week/month/agenda expansion; only-this, this-and-following and all edits (including pattern changes and date shifts); deletes; stale-edit conflict; repeating task creation once, end by count, skip/stop; export version 3 round trip into a separate household; version 2 compatibility; invalid recurrence exports. 66 organizer tests passed locally.
 - Visual check at phone width on a local test database: repeat controls show only the relevant fields; occurrence detail, scope choice and repeating-task badge render correctly. Real household data was not used.
+
+## Overview task priority filters (DASH-04), October 14, 2026 — Claude Code
+
+- Isolated PostgreSQL test covers ordering, each filter's membership and count (overdue included in due filters; completed and other-household tasks excluded), an unknown filter falling back to All, and the filtered empty state. 67 organizer tests passed locally.
+- Visual check on a local test database (sample data only): filter row with counts and the Due in 1 day filter.
