@@ -20,7 +20,7 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 | Path | Responsibility |
 |---|---|
 | hq/settings.py, urls.py | Configuration, middleware and routes |
-| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0007) |
+| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0008) |
 | organizer/views.py, forms.py | Authentication, parent authorization, bootstrap, foundation UI |
 | organizer/planner.py, planner_forms.py | Calendar, family, tasks, lunch planning and validation |
 | organizer/recurrence.py | RRULE building/validation, occurrence expansion and clock-change handling |
@@ -48,6 +48,9 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
   Views expand series per date window (recurrence.household_events); an Occurrence wrapper
   carries the instance date. Wall times follow Option A for clock changes. A repeating Task
   stores recurrence, recurrence_start and series_key; completion creates the next due date once.
+- Multi-date add (planner.bulk_activity) validates shared details, then each date with ActivityForm,
+  and creates every date in one locked transaction. Activity.batch (a submitted UUID) makes the
+  create idempotent; it is not part of exports.
 - LunchPlan is unique per child/date; household-scoped bulk operations use versioned undo.
 - GoogleConnection belongs to a parent/household, with encrypted refresh token.
   GoogleCalendar holds visibility, permissions, source color and sync metadata.
@@ -121,4 +124,4 @@ accounts and connections are unchanged. Unknown authors fall back to the restori
 Version 1 notes-only exports still restore notes only. `manage.py export_household <file>`
 writes the same export for operators. A hosted isolated recovery drill is still pending.
 Source Git history and bundles cannot recover live household data. No scheduler, notification channel,
-closed-app delivery, bulk event dates or Google write workflow exists yet.
+closed-app delivery or Google write workflow exists yet.

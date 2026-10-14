@@ -179,3 +179,17 @@ class QuickActivityForm(ActivityForm):
 class QuickTaskForm(TaskForm):
     class Meta(TaskForm.Meta):
         fields = ['title', 'due_date', 'assignee', 'high_priority']
+
+class BulkActivityForm(ActivityForm):
+    """Details shared by every date in a multi-date add; each date is then checked with ActivityForm."""
+    batch = forms.UUIDField(widget=forms.HiddenInput)
+
+    class Meta(ActivityForm.Meta):
+        fields = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes']
+
+    def clean(self):
+        data = super().clean()
+        if not data.get('all_day') and data.get('start_time') and data.get('end_time') and data['end_time'] <= data['start_time']:
+            self.add_error('end_time', 'The end must be after the start.')
+        return data
+

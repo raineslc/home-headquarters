@@ -41,3 +41,22 @@ document.querySelectorAll('[data-repeat]').forEach(group => {
   group.addEventListener('change', update);
   update();
 });
+// Multi-date add: select a weekday column and keep the chosen-date count current.
+document.querySelectorAll('[data-bulk-grid]').forEach(grid => {
+  const form = grid.closest('form');
+  const count = form.querySelector('[data-bulk-count]');
+  const boxes = () => Array.from(grid.querySelectorAll('input[name="dates"]'));
+  const update = () => {
+    const total = boxes().filter(box => box.checked).length;
+    if (count) count.textContent = `${total} date${total === 1 ? '' : 's'} chosen`;
+  };
+  grid.querySelectorAll('.weekday-toggle').forEach(button => {
+    button.addEventListener('click', () => {
+      const column = boxes().filter(box => box.dataset.weekday === button.dataset.weekday);
+      const select = !column.every(box => box.checked);
+      column.forEach(box => { box.checked = select; });
+      update();
+    });
+  });
+  grid.addEventListener('change', update);
+});

@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from .models import Activity, FamilyMember, Household, LunchPlan, Task
-from .planner_forms import ActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm
+from .planner_forms import ActivityForm, BulkActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm
 from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
@@ -410,3 +410,118 @@ def undo_lunch(request):
 @require_GET
 def settings(request):
     return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household})
+
+BULK_MAX_DATES = 60
+BULK_MAX_DAYS = 120
+BULK_DETAILS = ['title', 'start_time', 'end_time', 'all_day', 'participants', 'location', 'notes', 'reminder_minutes', 'batch', 'version']
+
+def bulk_range(request, today):
+    """The date range shown for selection: up to 120 days, defaulting to six weeks from today."""
+    source = request.POST if request.method == 'POST' else request.GET
+    try:
+        start = date.fromisoformat(source.get('from', ''))
+    except ValueError:
+        start = today
+    try:
+        end = date.fromisoformat(source.get('to', ''))
+    except ValueError:
+        end = start + timedelta(days=41)
+    start = min(max(start, date(1901, 1, 1)), date(2098, 1, 1))
+    end = min(max(end, start), start + timedelta(days=BULK_MAX_DAYS - 1), date(2098, 12, 31))
+    return start, end
+
+def bulk_grid(start, end, chosen):
+    first = start - timedelta(days=start.weekday())
+    count = ((end - first).days // 7 + 1) * 7
+    days = [first + timedelta(days=i) for i in range(count)]
+    # Label the month on the first date shown and on each 1st.
+    return [[{'date': d, 'in_range': start <= d <= end, 'checked': d in chosen, 'month': d == start or d.day == 1}
+             for d in days[i:i + 7]] for i in range(0, count, 7)]
+
+def bulk_dates(request, start, end):
+    """Chosen dates, sorted and de-duplicated; returns (dates, error message or None)."""
+    chosen = set()
+    for value in request.POST.getlist('dates'):
+        try:
+            day = date.fromisoformat(value)
+        except ValueError:
+            return [], 'One of the chosen dates is not valid. Choose the dates again.'
+        if not start <= day <= end:
+            return [], 'Choose dates within the range shown.'
+        chosen.add(day)
+    if not chosen:
+        return [], 'Choose at least one date.'
+    if len(chosen) > BULK_MAX_DATES:
+        return sorted(chosen), f'Choose up to {BULK_MAX_DATES} dates at a time.'
+    return sorted(chosen), None
+
+def bulk_review_rows(request, dates):
+    """Validate the activity on each date (clock changes differ by date) and list other plans that day."""
+    rows = []
+    for day in dates:
+        data = request.POST.copy()
+        data['start_date'] = data['end_date'] = day.isoformat()
+        form = ActivityForm(data, household=request.household)
+        problems = [] if form.is_valid() else [message for errors in form.errors.values() for message in errors]
+        others = [event.title for event in household_events(request.household, day, day)] + [event.title for event in shared_events(request.household, day, day)]
+        rows.append({'date': day, 'form': form, 'problems': problems, 'others': others})
+    return rows
+
+def bulk_initial(request):
+    initial = {name: request.POST.get(name) for name in BULK_DETAILS if name != 'participants'}
+    initial['participants'] = request.POST.getlist('participants')
+    initial['all_day'] = request.POST.get('all_day') in ('on', 'true', 'True', '1')
+    return initial
+
+@parent_only
+@require_http_methods(['GET', 'POST'])
+def bulk_activity(request):
+    today = timezone.localdate(timezone=ZoneInfo(request.household.timezone))
+    start, end = bulk_range(request, today)
+    action = request.POST.get('action') if request.method == 'POST' else None
+    context = {'section': 'home', 'zone': request.household.timezone, 'start': start, 'end': end, 'max_dates': BULK_MAX_DATES,
+               'weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']}
+    if action in ('review', 'create'):
+        form = BulkActivityForm(request.POST, household=request.household)
+        dates, date_error = bulk_dates(request, start, end)
+        if form.is_valid() and not date_error:
+            rows = bulk_review_rows(request, dates)
+            ready = not any(row['problems'] for row in rows)
+            if action == 'create' and ready:
+                with transaction.atomic():
+                    household = Household.objects.select_for_update().get(pk=request.household.pk)
+                    batch = form.cleaned_data['batch']
+                    # The household lock serializes submits, so a repeated batch ID cannot add the dates twice.
+                    if Activity.objects.filter(household=household, batch=batch).exists():
+                        messages.info(request, 'These activities were already added.')
+                        return redirect(reverse('home') + f'?date={dates[0].isoformat()}&view=month')
+                    for row in rows:
+                        item = row['form'].save(commit=False)
+                        item.household, item.timezone, item.version, item.batch = household, household.timezone, 1, batch
+                        item.save()
+                        row['form'].save_m2m()
+                    bump(household)
+                messages.success(request, f'Added {len(rows)} activities.' if len(rows) != 1 else 'Added 1 activity.')
+                return redirect(reverse('home') + f'?date={dates[0].isoformat()}&view=month')
+            carry = [(name, value) for name in BULK_DETAILS for value in request.POST.getlist(name)]
+            carry += [('dates', day.isoformat()) for day in dates]
+            return render(request, 'planner/bulk.html', {**context, 'review': True, 'rows': rows, 'ready': ready, 'form': form, 'carry': carry,
+                                                         'participants': form.cleaned_data['participants']})
+        chosen = set(dates)
+        context.update(form=form, grid=bulk_grid(start, end, chosen), date_error=date_error, chosen_count=len(chosen))
+        return render(request, 'planner/bulk.html', context)
+    if action in ('range', 'edit'):
+        form = BulkActivityForm(initial=bulk_initial(request), household=request.household)
+        chosen = set()
+        for value in request.POST.getlist('dates'):
+            try:
+                chosen.add(date.fromisoformat(value))
+            except ValueError:
+                pass
+    else:
+        form = BulkActivityForm(initial={'batch': uuid.uuid4(), 'version': 0}, household=request.household)
+        chosen = set()
+    chosen = {day for day in chosen if start <= day <= end}
+    context.update(form=form, grid=bulk_grid(start, end, chosen), chosen_count=len(chosen))
+    return render(request, 'planner/bulk.html', context)
+

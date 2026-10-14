@@ -4,6 +4,17 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Add an activity on several dates
+
+- Author: Claude Code. Task: CAL-03.
+- New "Add on several dates" page (linked from Add activity): enter details once, tick dates on a
+  calendar grid (weekday columns can be selected at once), review every date with any problems
+  and other plans that day, then add them all together. If any date has a problem, none are added.
+- Migration 0008 adds Activity.batch so a repeated submit cannot add the dates twice.
+- Validation: 72 organizer tests on local isolated PostgreSQL; deploy and migration checks;
+  phone-width end-to-end check on local test data.
+- Limitations: single-day activities only; up to 60 dates in a 120-day range per batch.
+
 ## 2026-10-14 — Overview task priority filters
 
 - Author: Claude Code. Task: DASH-04 (owner request, ahead of CAL-03).
