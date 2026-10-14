@@ -8,6 +8,17 @@ PROJECT="${1:?Usage: bash gcp-setup.sh PROJECT_ID}"
 REGION=us-east4
 GITHUB_REPO=raineslc/home-headquarters
 
+# Newly created service accounts can take a minute to become visible to IAM. Retry quietly,
+# and show Google's error only if the last attempt still fails.
+retry() {
+  for attempt in 1 2 3 4 5 6; do
+    "$@" >/dev/null 2>&1 && return 0
+    echo "  Google is still finishing setup; retrying in 15 seconds..."
+    sleep 15
+  done
+  "$@" >/dev/null
+}
+
 gcloud config set project "$PROJECT" >/dev/null
 NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
 echo "Enabling services (one minute)..."
@@ -21,7 +32,7 @@ cat > /tmp/hhq-cleanup.json <<'POLICY'
 [{"name": "keep-newest", "action": {"type": "Keep"}, "mostRecentVersions": {"keepCount": 3}},
  {"name": "delete-older", "action": {"type": "Delete"}, "condition": {"tagState": "any", "olderThan": "1d"}}]
 POLICY
-gcloud artifacts repositories set-cleanup-policies hhq --location "$REGION" --policy=/tmp/hhq-cleanup.json --no-dry-run >/dev/null
+retry gcloud artifacts repositories set-cleanup-policies hhq --location "$REGION" --policy=/tmp/hhq-cleanup.json --no-dry-run
 
 echo "Service accounts..."
 RUNTIME="hhq-runtime@$PROJECT.iam.gserviceaccount.com"
@@ -30,11 +41,18 @@ gcloud iam service-accounts describe "$RUNTIME" >/dev/null 2>&1 || \
   gcloud iam service-accounts create hhq-runtime --display-name="Home Headquarters app (runtime)"
 gcloud iam service-accounts describe "$DEPLOYER" >/dev/null 2>&1 || \
   gcloud iam service-accounts create hhq-deployer --display-name="Home Headquarters deploys (GitHub Actions)"
-for role in roles/run.admin roles/artifactregistry.writer; do
-  gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$DEPLOYER" --role="$role" --condition=None >/dev/null
+for account in "$RUNTIME" "$DEPLOYER"; do
+  for attempt in $(seq 1 12); do
+    gcloud iam service-accounts describe "$account" >/dev/null 2>&1 && break
+    echo "  Waiting for $account to be ready..."
+    sleep 10
+  done
 done
-gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" --member="serviceAccount:$DEPLOYER" \
-  --role=roles/iam.serviceAccountUser >/dev/null
+for role in roles/run.admin roles/artifactregistry.writer; do
+  retry gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$DEPLOYER" --role="$role" --condition=None
+done
+retry gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" --member="serviceAccount:$DEPLOYER" \
+  --role=roles/iam.serviceAccountUser
 
 echo "GitHub Actions sign-in without stored keys (Workload Identity Federation, main branch only)..."
 gcloud iam workload-identity-pools describe github --location=global >/dev/null 2>&1 || \
@@ -44,9 +62,12 @@ gcloud iam workload-identity-pools providers describe github --workload-identity
     --issuer-uri="https://token.actions.githubusercontent.com" \
     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
     --attribute-condition="assertion.repository=='$GITHUB_REPO' && assertion.ref=='refs/heads/main'"
-gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$GITHUB_REPO" >/dev/null
+retry gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$GITHUB_REPO"
 
+grant() {  # let the app's runtime account read one secret
+  retry gcloud secrets add-iam-policy-binding "$1" --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor
+}
 secret() {  # name, prompt
   if gcloud secrets describe "$1" >/dev/null 2>&1; then
     echo "  $1 already exists (kept)."
@@ -56,8 +77,7 @@ secret() {  # name, prompt
     printf '%s' "$value" | gcloud secrets create "$1" --data-file=- --replication-policy=automatic >/dev/null
     unset value
   fi
-  gcloud secrets add-iam-policy-binding "$1" --member="serviceAccount:$RUNTIME" \
-    --role=roles/secretmanager.secretAccessor >/dev/null
+  grant "$1"
 }
 echo "Secrets (typing is hidden; paste and press Enter):"
 if ! gcloud secrets describe hhq-django-secret-key >/dev/null 2>&1; then
@@ -65,7 +85,7 @@ if ! gcloud secrets describe hhq-django-secret-key >/dev/null 2>&1; then
     gcloud secrets create hhq-django-secret-key --data-file=- --replication-policy=automatic >/dev/null
   echo "  hhq-django-secret-key generated."
 fi
-gcloud secrets add-iam-policy-binding hhq-django-secret-key --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor >/dev/null
+grant hhq-django-secret-key
 read -r -s -p "  Neon DIRECT connection string (Neon > Connect, connection pooling OFF): " neon; echo
 case "$neon" in
   *-pooler*) echo "  That is the pooled string. Turn pooling off in Neon's Connect dialog and copy again."; exit 1 ;;
@@ -78,7 +98,7 @@ else
   printf '%s' "$neon" | gcloud secrets create hhq-database-url --data-file=- --replication-policy=automatic >/dev/null
 fi
 unset neon
-gcloud secrets add-iam-policy-binding hhq-database-url --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor >/dev/null
+grant hhq-database-url
 secret hhq-google-token-key "GOOGLE_TOKEN_KEY from Render > Environment (must match exactly)"
 secret hhq-google-client-secret "GOOGLE_CLIENT_SECRET from Render > Environment"
 secret hhq-openai-api-key "OPENAI_API_KEY from Render > Environment"

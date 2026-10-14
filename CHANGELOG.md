@@ -4,6 +4,13 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Setup script waits for new service accounts
+
+- Author: Claude Code. Task: FND-03.
+- deploy/gcp-setup.sh failed for the owner with "service account does not exist" because new
+  service accounts take up to a minute to appear in IAM. It now waits for them and retries
+  permission grants quietly, showing Google's error only if retries are exhausted.
+
 ## 2026-10-14 — Preparing the move to Cloud Run + Neon
 
 - Author: Claude Code. Task: FND-03 (owner approved Cloud Run + Neon, free address for now).
