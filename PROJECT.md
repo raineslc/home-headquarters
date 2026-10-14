@@ -15,21 +15,24 @@ children need packed lunches. AI helps organize and prepare research; humans app
 ## Current product
 
 Working preview, **not production-ready**. Includes authenticated household access,
-editable family profiles, parent invitations, calendar week/month/agenda, one-off
-activities, linked tasks, high priority, monthly lunch planning, read-only Google
+editable family profiles, parent invitations, calendar week/month/Upcoming agenda, one-off
+and repeating activities, linked and repeating tasks, high priority, monthly lunch planning, read-only Google
 connections, and real OpenAI draft/review/approval with explicit external task searches.
 Chris's Google connection and hosted AI have been verified. Melissa's live sign-in and
 calendar connection still need verification. See docs/verification.md for evidence.
 
 Reminder preferences are stored, but notifications are not delivered. There is no
 closed-app sync scheduler. Full household export/restore is implemented; its hosted recovery
-drill, recurrence, writable Google calendars and durable production storage remain release
+drill, writable Google calendars and durable production storage remain release
 requirements, not optional polish.
 
 ## Design and accepted changes
 
 - White background, restrained green accents, subtle borders, readable type and spacing.
 - Main weekly calendar, week priorities, compact inline Add activity/Add task, assistant input.
+- Agenda is a rolling seven-day Upcoming list of events and due tasks with an Overdue list.
+- Repeating times on clock-change days follow Option A: skipped times move forward, repeated
+  times use the first (owner decision, October 14, 2026; matches Google Calendar).
 - No oversized greetings, slogans, decorative banners or setup details in everyday views.
 - Keep Overview's removed “Next seven days” section and full lunch table removed.
 - Show selected School lunch entries in the main calendar. Packed-lunch needs remain in

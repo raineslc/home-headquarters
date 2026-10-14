@@ -18,9 +18,10 @@ preserves history. Neither contains credentials or the live household database.
 
 ## Release status
 
-Not a production release. Calendar views, one-off activities, linked/high-priority tasks,
+Not a production release. Calendar views, one-off and repeating activities, linked,
+repeating and high-priority tasks,
 editable family profiles, monthly lunches, parent invitations, read-only Google Calendar
-and real AI proposals/approvals are available. Recurrence, Google writes, unattended sync,
+and real AI proposals/approvals are available. Google writes, unattended sync,
 a hosted recovery drill and delivered reminders remain outstanding. Full household
 export/restore is available under Settings → Backup and restore. See [TASKS.md](TASKS.md).
 Do not use the free testing environment as

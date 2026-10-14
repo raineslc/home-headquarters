@@ -16,9 +16,11 @@ psycopg-binary==3.3.6
 pyasn1==0.6.4
 pyasn1_modules==0.4.2
 pycparser==3.11
+python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 requests==2.34.2
 requests-oauthlib==2.0.0
+six==1.17.0
 sqlparse==0.6.0
 typing_extensions==4.16.0
 tzdata==2026.5

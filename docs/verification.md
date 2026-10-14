@@ -23,7 +23,7 @@ Do not infer completion from a build or a screenshot.
 | Reminder delivery while app closed | Not implemented; unverified |
 | Calendar synchronization | Chris connected; selected calendars manually synced and Google event verified in unified calendar. Scheduled sync and writes remain pending |
 
-The current artifact is a preview, not the full family organizer release. Family profiles, one-off activities, linked tasks, monthly lunch plans, invitations, read-only Google connections and approval-based AI are implemented. A hosted full-household recovery drill, recurrence, Google writes, unattended sync and reminder delivery remain outstanding.
+The current artifact is a preview, not the full family organizer release. Family profiles, one-off activities, linked tasks, monthly lunch plans, invitations, read-only Google connections and approval-based AI are implemented. A hosted full-household recovery drill, Google writes, unattended sync and reminder delivery remain outstanding.
 
 Test URL: https://home-headquarters-test.onrender.com
 
@@ -61,3 +61,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - New isolated PostgreSQL test covers the rolling range, task inclusion/exclusion (completed, out of range, other household), ordering and Overdue list. 44 organizer tests passed locally.
 - Visual check at phone width against a local test database with sample data (not the real household). Desktop layout reuses the existing agenda styles.
+
+## Repeating activities and tasks (CAL-02, TSK-02), October 14, 2026 — Claude Code
+
+- Migration 0007 and python-dateutil 2.9.0.post0. 22 new isolated PostgreSQL/unit tests: rule building, description and validation; Option A spring-forward/fall-back times; multi-day overlap; week/month/agenda expansion; only-this, this-and-following and all edits (including pattern changes and date shifts); deletes; stale-edit conflict; repeating task creation once, end by count, skip/stop; export version 3 round trip into a separate household; version 2 compatibility; invalid recurrence exports. 66 organizer tests passed locally.
+- Visual check at phone width on a local test database: repeat controls show only the relevant fields; occurrence detail, scope choice and repeating-task badge render correctly. Real household data was not used.
