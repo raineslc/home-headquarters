@@ -28,6 +28,15 @@ class RecoveryPoint(models.Model):
     payload = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+class PendingRestore(models.Model):
+    """A validated export awaiting confirmation; kept out of the session because exports can be large."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    household_version = models.PositiveIntegerField()
+    payload = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
 class BootstrapState(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     used_at = models.DateTimeField(null=True)

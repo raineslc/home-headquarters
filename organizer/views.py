@@ -1,6 +1,8 @@
 import json
+import uuid
 from datetime import timedelta
 from functools import wraps
+from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
@@ -16,8 +18,8 @@ from django.utils.crypto import constant_time_compare, salted_hmac
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.debug import sensitive_post_parameters
 from .forms import SignInForm, SetupForm, RecordForm, RestoreForm
-from .models import BootstrapState, Household, Membership, SetupRecord, RecoveryPoint, RateLimit, JobRun
-from .recovery import snapshot, validate_snapshot
+from .models import BootstrapState, Household, Membership, SetupRecord, RecoveryPoint, RateLimit, JobRun, PendingRestore
+from .recovery import MAX_BYTES, replace_household_data, snapshot, validate_any
 
 def limited(bucket, limit=20):
     key = salted_hmac('rate-limit', bucket).hexdigest()
@@ -130,9 +132,18 @@ def records(request):
 def export(request):
     with transaction.atomic():
         household = Household.objects.select_for_update().get(pk=request.household.pk)
-        response = JsonResponse(snapshot(household))
-    response['Content-Disposition'] = 'attachment; filename="home-headquarters-foundation-v1.json"'
+        data = snapshot(household)
+        response = JsonResponse(data)
+    day = timezone.localdate(timezone=ZoneInfo(household.timezone)).isoformat()
+    response['Content-Disposition'] = f'attachment; filename="home-headquarters-household-v2-{day}.json"'
     return response
+
+PREVIEW_LIFETIME = timedelta(hours=1)
+
+def restore_problem(request, title, detail, status):
+    request.session.pop('restore_preview', None)
+    PendingRestore.objects.filter(household=request.household, created_by=request.user).delete()
+    return render(request, 'message.html', {'title': title, 'detail': detail}, status=status)
 
 @parent_only
 @require_http_methods(['GET', 'POST'])
@@ -143,31 +154,44 @@ def restore(request):
         if form.is_valid():
             try:
                 upload = form.cleaned_data['backup']
-                if upload.size > 1024 * 1024:
-                    raise ValidationError('The export exceeds the 1 MB foundation limit.')
+                if upload.size > MAX_BYTES:
+                    raise ValidationError('The export exceeds the 10 MB limit.')
                 data = json.loads(upload.read())
-                rows = validate_snapshot(data)
-                request.session['restore_preview'] = {
-                    'household_id': str(request.household.pk), 'version': request.household.version, 'data': data}
-                return render(request, 'restore.html', {'preview': True, 'record_count': len(rows)})
+                counts = validate_any(data)
+                with transaction.atomic():
+                    PendingRestore.objects.filter(household=request.household, created_by=request.user).delete()
+                    pending = PendingRestore.objects.create(household=request.household, created_by=request.user,
+                                                            household_version=request.household.version, payload=data)
+                request.session['restore_preview'] = str(pending.pk)
+                return render(request, 'restore.html', {'preview': True, 'counts': counts, 'version': data['version'],
+                                                        'export_zone': data['household']['timezone'], 'household': request.household})
             except (ValueError, UnicodeError, ValidationError) as error:
                 form.add_error('backup', error if isinstance(error, ValidationError) else 'This file is not valid JSON.')
     elif request.method == 'POST' and request.POST.get('action') == 'apply':
-        preview = request.session.get('restore_preview')
-        if not preview or preview['household_id'] != str(request.household.pk):
+        try:
+            pending_id = uuid.UUID(str(request.session.get('restore_preview')))
+        except ValueError:
+            pending_id = None
+        pending = PendingRestore.objects.filter(pk=pending_id, household=request.household, created_by=request.user).first()
+        if not pending:
             return HttpResponse('Preview the export before restoring.', status=400)
-        rows = validate_snapshot(preview['data'])
-        with transaction.atomic():
-            household = Household.objects.select_for_update().get(pk=request.household.pk)
-            if household.version != preview['version']:
-                return render(request, 'message.html', {'title': 'Your household changed', 'detail': 'Someone saved a change since this preview. Preview the export again before restoring.'}, status=409)
-            point = RecoveryPoint.objects.create(household=household, created_by=request.user, payload=snapshot(household))
-            SetupRecord.objects.filter(household=household).delete()
-            SetupRecord.objects.bulk_create([SetupRecord(household=household, title=row['title']) for row in rows])
-            household.version += 1
-            household.save(update_fields=['version'])
+        if pending.created_at < timezone.now() - PREVIEW_LIFETIME:
+            return restore_problem(request, 'This preview expired', 'Preview the export again before restoring.', 400)
+        data = pending.payload
+        try:
+            with transaction.atomic():
+                household = Household.objects.select_for_update().get(pk=request.household.pk)
+                if household.version != pending.household_version:
+                    return restore_problem(request, 'Your household changed', 'Someone saved a change since this preview. Preview the export again before restoring.', 409)
+                RecoveryPoint.objects.create(household=household, created_by=request.user, payload=snapshot(household))
+                replace_household_data(household, request.user, data)
+                household.version += 1
+                household.save(update_fields=['version'])
+                pending.delete()
+        except ValidationError:
+            return restore_problem(request, 'This export cannot be restored', 'Nothing was changed. Preview the export again.', 400)
         request.session.pop('restore_preview', None)
-        messages.success(request, 'Notes restored. A recovery copy was saved before replacement.')
+        messages.success(request, ('Notes restored.' if data['version'] == 1 else 'Household restored.') + ' A recovery copy was saved before replacement.')
         return redirect('foundation')
     return render(request, 'restore.html', {'form': form})
 
@@ -176,7 +200,8 @@ def restore(request):
 def recovery_download(request, point_id):
     point = get_object_or_404(RecoveryPoint, pk=point_id, household=request.household)
     response = JsonResponse(point.payload)
-    response['Content-Disposition'] = 'attachment; filename="home-headquarters-recovery-v1.json"'
+    version = point.payload.get('version') if isinstance(point.payload, dict) else 1
+    response['Content-Disposition'] = f'attachment; filename="home-headquarters-recovery-v{2 if version == 2 else 1}.json"'
     return response
 
 @parent_only

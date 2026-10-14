@@ -23,7 +23,7 @@ Do not infer completion from a build or a screenshot.
 | Reminder delivery while app closed | Not implemented; unverified |
 | Calendar synchronization | Chris connected; selected calendars manually synced and Google event verified in unified calendar. Scheduled sync and writes remain pending |
 
-The current artifact is a preview, not the full family organizer release. Family profiles, one-off activities, linked tasks, monthly lunch plans, invitations, read-only Google connections and approval-based AI are implemented. Full planner recovery, recurrence, Google writes, unattended sync and reminder delivery remain outstanding.
+The current artifact is a preview, not the full family organizer release. Family profiles, one-off activities, linked tasks, monthly lunch plans, invitations, read-only Google connections and approval-based AI are implemented. A hosted full-household recovery drill, recurrence, Google writes, unattended sync and reminder delivery remain outstanding.
 
 Test URL: https://home-headquarters-test.onrender.com
 
@@ -49,3 +49,10 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - That probe exposed an ambiguous gift-recipient assumption. Instructions were refined and a second real synthetic request returned a neutral Birthday party title, the three preparation tasks, and questions about recipient identity, age and budget.
 - Assistant changes are backed up in the ignored local Git bundle and private GitHub repository. Keys are excluded from both.
 - Reminder delivery remains disabled; the UI saves preferences without claiming notifications were scheduled.
+
+## Full household recovery (REC-01), October 14, 2026 — Claude Code
+
+- Branch rec-01-full-household-recovery adds export format version 2, validated replacing restore, migration 0006 (PendingRestore) and the export_household command.
+- Local isolated PostgreSQL 16 (portable pgserver build; CI uses 17) with Python 3.11: 43 organizer tests passed, including a round-trip recovery drill into a separate household, same-household restore and undo via recovery point, 20 invalid-export cases, per-parent/expiring previews, stale-preview rejection, version 1 compatibility and secret exclusion. Deploy check, migration drift check and collectstatic passed.
+- GitHub Actions CI run 38578064839 (PostgreSQL 17, Python 3.13.7) passed for commit 4c1323b3e4909f872bf780247abc75153811aa7a.
+- Not yet verified: deployment, a real export downloaded from the live preview, and restore of that export into an isolated hosted environment. The real household database was not touched.

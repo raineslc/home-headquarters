@@ -2,7 +2,7 @@ from datetime import timedelta
 from django.core.management import BaseCommand
 from django.db import connection, transaction
 from django.utils import timezone
-from organizer.models import JobRun, RateLimit
+from organizer.models import JobRun, PendingRestore, RateLimit
 
 class Command(BaseCommand):
     help = 'Foundation scheduler heartbeat. Does not send reminders or synchronize calendars yet.'
@@ -20,6 +20,7 @@ class Command(BaseCommand):
                 return
             RateLimit.objects.filter(window_start__lt=now - timedelta(days=1)).delete()
             JobRun.objects.filter(completed_at__lt=now - timedelta(days=30)).delete()
+            PendingRestore.objects.filter(created_at__lt=now - timedelta(days=1)).delete()
             run.status = 'complete'
             run.completed_at = timezone.now()
             run.save(update_fields=['status', 'completed_at'])

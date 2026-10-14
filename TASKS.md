@@ -2,7 +2,8 @@
 
 Authoritative shared backlog, migrated from the owner's original eleven-part brief,
 README roadmap and subsequent accepted changes. Last reconciled: October 14, 2026.
-Owner for next work: unassigned. No feature work is in progress at this documentation handoff.
+Owner for next work: unassigned. REC-01 code is complete on branch `rec-01-full-household-recovery`
+(Claude Code); its hosted recovery drill is the remaining step.
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -10,8 +11,8 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 
 ## Next work and blockers
 
-1. **FND-03 / REC-01:** finish complete household export and isolated recovery before treating
-   the preview as durable production storage. Address free database expiry before November 11.
+1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
+   isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
 3. **CAL-02 / TSK-02**, then **GGL-02**: recurrence/bulk calendar foundations and Google writes.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
@@ -29,7 +30,19 @@ participation. No further approval is needed merely to develop reversible local 
   last recorded November 11, 2026, 9:56 PM Eastern; verify current provider state. Costs need approval.
 - [ ] REC-01 Versioned export of **all** household organizer data, validated restore with
   recovery point before replacement, conflict handling and isolated-environment recovery drill.
-  Existing notes-only export/restore is implemented and tested; full-data recovery is not.
+  **Implemented, hosted drill pending (Claude Code).** Export format version 2 covers notes,
+  family members, activities/participants, tasks, lunches and assistant plans/suggestions;
+  excludes accounts, invitations, Google connections/tokens/event cache and usage counters.
+  Restore validates every field and cross-reference before writing, previews counts, stores
+  the preview server-side (PendingRestore, one hour, per parent), rejects stale previews,
+  saves a full recovery point, then replaces all organizer data atomically with new IDs
+  (references and suggestion payload member IDs remapped). Version 1 notes exports still
+  restore notes only. `export_household` writes an operator export. Local PostgreSQL tests
+  include a round-trip drill into a separate household and undo via recovery point.
+  PostgreSQL 17 CI 38578064839 passed (commit 4c1323b). Remaining: merge, deploy, download a real export, and restore it into an
+  isolated hosted environment (never the live household) to confirm. Known limit: AI plan
+  generation does not bump the household version, so a generation finishing mid-restore is
+  not detected as a stale preview; the restore still succeeds atomically.
 - [x] FND-04 Source in private GitHub; environment recreation and secret-name-only example.
   Local source bundle exists separately. Neither is a household-data backup.
 
@@ -120,14 +133,14 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: ChatGPT/Codex. Change: HANDOFF-01 documentation/source packaging; no app behavior change.
-- Starting canonical GitHub commit: `704938dbdc96dab72a29c15e2780d192af60dd0f`.
+- Assistant: Claude Code. Change: REC-01 full household export/restore (code, migration 0006, tests).
+- Starting canonical GitHub commit: `f5d15799e204d86e27411cb95ab0b75c2dce3ff9` (HANDOFF-01); branch `rec-01-full-household-recovery`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: documentation/link review and source inventory; application behavior uses
-  previously passed CI 38568649471. New commit CI status is reported with the handoff.
-- Remaining blockers: paid hosting/scheduler approval, second-parent participation, incomplete
-  full-data recovery/recurrence/Google writes/reminder delivery. Next: REC-01/FND-03.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 43 organizer
+  tests passed, deploy check, migration drift check and collectstatic passed. GitHub Actions CI 38578064839 passed on 4c1323b.
+- Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
+  participation, recurrence/Google writes/reminder delivery. Next: merge, deploy, REC-01 drill, FND-03.
 
 ## Deferred until first release works
 

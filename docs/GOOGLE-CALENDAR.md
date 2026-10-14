@@ -71,6 +71,6 @@ calendar appearing in Overview, followed by a real Google change and resync.
 ## Recovery limits
 
 Migration 0004 adds connection/cache/invitation tables without changing existing
-plans. The existing foundation export still covers verification notes only.
-Provider caches can be rebuilt by reconnecting and syncing; full household export
-is pending. Never include tokens or invitation hashes in a user-facing export.
+plans. Household exports omit Google connections, calendars and cached events.
+Provider caches can be rebuilt by reconnecting and syncing; household exports
+cover local organizer data only. Never include tokens or invitation hashes in a user-facing export.
