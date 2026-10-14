@@ -23,13 +23,20 @@ search queries; the user reviews the entire query before sending it.
 Limits: 30 generation attempts per household/local day and six per user/15-minute window.
 Failures count toward the limits; requests do not retry automatically. An interrupted
 generation can be retried after two minutes. One proposal supports one event and up to
-eight preparation tasks. Recurrence and Google writes are not implemented by this preview.
+eight preparation tasks. The assistant can suggest repeating activities and tasks; each
+pattern is checked like a saved series and anything unusable becomes a question. Google
+writes are not implemented.
+
+Regression cases: `python manage.py assistant_eval` sends seven fixed planning requests to
+the real provider (uses API credit) and checks the drafts. It creates a temporary household
+inside a transaction that is rolled back, so no plans are kept. Run it with a key in an
+ignored .env.local against an isolated database; add `--case NAME` to run one case.
 
 Reminder preferences can be edited and saved, but **no reminder is scheduled or delivered**.
 This is clearly labeled in forms and approval feedback. A paid scheduler/delivery setup
-and closed-app delivery verification remain separate work. Exports still cover foundation
-notes only, not assistant history or organizer records; use provider database backups for
-complete recovery. Free preview database expiry still applies.
+and closed-app delivery verification remain separate work. Household exports include
+assistant plans and suggestions (see Settings → Backup and restore). Free preview database
+expiry still applies.
 
 Verification: isolated PostgreSQL CI covers approval, retry deduplication, linked tasks,
 atomic rejection of incomplete events, draft edits, dismissal, household authorization,

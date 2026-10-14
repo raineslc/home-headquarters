@@ -28,7 +28,8 @@ document.querySelectorAll('[data-ai-request]').forEach(form => {
 });
 // Show only the repeat controls that apply to the chosen frequency and end.
 document.querySelectorAll('[data-repeat]').forEach(group => {
-  const value = name => (group.querySelector(`[name="${name}"]`) || {}).value;
+  // Assistant review cards prefix field names with the suggestion ID, so match on the suffix.
+  const value = name => (group.querySelector(`[name="${name}"], [name$="-${name}"]`) || {}).value;
   const update = () => {
     const repeat = value('repeat');
     const ends = value('ends');
