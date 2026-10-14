@@ -2,8 +2,8 @@
 
 Authoritative shared backlog, migrated from the owner's original eleven-part brief,
 README roadmap and subsequent accepted changes. Last reconciled: October 14, 2026.
-Owner for next work: unassigned. REC-01 code is complete on branch `rec-01-full-household-recovery`
-(Claude Code); its hosted recovery drill is the remaining step.
+Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recovery drill remains.
+DASH-03 is complete; CAL-02/TSK-02 recurrence is in progress (owner chose Option A for DST times).
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -14,7 +14,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **CAL-02 / TSK-02**, then **GGL-02**: recurrence/bulk calendar foundations and Google writes.
+3. **CAL-02 / TSK-02** (in progress, Claude Code), then **CAL-03**, **GGL-02**: recurrence/bulk calendar foundations and Google writes.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -106,8 +106,11 @@ participation. No further approval is needed merely to develop reversible local 
   clearly overdue work. Source and participant identity remain distinguishable.
 - [x] DASH-02 Remove Overview “Next seven days” section (owner revision). Agenda remains;
   do not re-add the removed section to satisfy the older brief.
-- [ ] DASH-03 Verify an Upcoming/Agenda workflow combining next-seven-day events **and tasks**
-  without restoring the unwanted Overview section. Current Agenda alone is not full acceptance.
+- [x] DASH-03 Upcoming/Agenda workflow combining next-seven-day events **and tasks** without
+  restoring the unwanted Overview section (Claude Code). Agenda is now a rolling seven days from
+  the chosen date (default today) with events, open due tasks (time, assignee, priority, linked
+  activity; high priority first) and an Overdue list when today is in range. Week/month unchanged.
+  Isolated PostgreSQL test plus local phone-width visual check; CI result reported in handoff.
 - [ ] REM-01 Choose a supported delivery channel and background schedule with owner-approved
   costs; document browser/device limitations and consent. Free web sleep is not a scheduler.
 - [ ] REM-02 Durable reminder jobs: time zones, configurable lead times, retry/backoff,
