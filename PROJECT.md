@@ -29,7 +29,8 @@ requirements, not optional polish.
 ## Design and accepted changes
 
 - White background, restrained green accents, subtle borders, readable type and spacing.
-- Main weekly calendar, week priorities, compact inline Add activity/Add task, assistant input.
+- Main weekly calendar, task priorities (all open tasks; filters All, High priority, Due in 7 days,
+  Due in 1 day), compact inline Add activity/Add task, assistant input.
 - Agenda is a rolling seven-day Upcoming list of events and due tasks with an Overdue list.
 - Repeating times on clock-change days follow Option A: skipped times move forward, repeated
   times use the first (owner decision, October 14, 2026; matches Google Calendar).

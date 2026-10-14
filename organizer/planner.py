@@ -5,7 +5,7 @@ from datetime import date, time, timedelta
 from zoneinfo import ZoneInfo
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -17,6 +17,8 @@ from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
 from .recurrence import describe, end_before, first_on_or_after, household_events, next_date, occurrence_of
+
+TASK_FILTERS = [('all', 'All'), ('high', 'High priority'), ('week', 'Due in 7 days'), ('day', 'Due in 1 day')]
 
 def chosen_date(request):
     try:
@@ -106,7 +108,13 @@ def dashboard(request):
     overdue = list(task_query.filter(completed_at__isnull=True, due_date__lt=today)) if mode == 'agenda' and start <= today <= end else []
     school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
     cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
-    priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True) | Q(high_priority=True)).order_by('-high_priority', 'due_date', 'title')[:8]
+    # All open tasks, with quick filters; the due-date filters include anything overdue.
+    open_tasks = task_query.filter(completed_at__isnull=True)
+    filtered = {'all': open_tasks, 'high': open_tasks.filter(high_priority=True),
+                'week': open_tasks.filter(due_date__lte=today + timedelta(days=7)), 'day': open_tasks.filter(due_date__lte=today + timedelta(days=1))}
+    task_filter = request.GET.get('tasks') if request.GET.get('tasks') in filtered else 'all'
+    priorities = filtered[task_filter].order_by('-high_priority', F('due_date').asc(nulls_last=True), F('due_time').asc(nulls_last=True), 'title')
+    task_filters = [{'key': key, 'label': label, 'count': filtered[key].count(), 'active': key == task_filter} for key, label in TASK_FILTERS]
     today_events = household_events(request.household, today, today) + shared_events(request.household, today, today)
     today_events.sort(key=lambda event: (event.start_time.isoformat() if event.start_time else '', event.title))
     quick_context['google_calendars'] = GoogleCalendar.objects.filter(connection__household=request.household, connection__owner__membership__active=True, connection__owner__membership__household=request.household).exclude(visibility='off').select_related('connection')
@@ -115,7 +123,7 @@ def dashboard(request):
         next_day = (first + timedelta(days=32)).replace(day=1)
     else:
         previous, next_day = day - timedelta(days=7), day + timedelta(days=7)
-    return render(request, 'planner/dashboard.html', {**quick_context, 'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'range_end': end, 'overdue': overdue, 'priorities': priorities, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
+    return render(request, 'planner/dashboard.html', {**quick_context, 'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'range_end': end, 'overdue': overdue, 'priorities': priorities, 'task_filters': task_filters, 'task_filter': task_filter, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
 
 @parent_only
 @require_GET

@@ -3,7 +3,8 @@
 Authoritative shared backlog, migrated from the owner's original eleven-part brief,
 README roadmap and subsequent accepted changes. Last reconciled: October 14, 2026.
 Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recovery drill remains.
-DASH-03 and CAL-02/TSK-02 recurrence are complete (owner chose Option A for clock-change times).
+DASH-03 and CAL-02/TSK-02 recurrence are merged (owner chose Option A for clock-change times).
+Owner reprioritized DASH-04 (Overview task priority filters) ahead of CAL-03 on October 14.
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -14,7 +15,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **CAL-03** multi-date bulk entry, then **GGL-02** Google writes (recurrence is now in place): recurrence/bulk calendar foundations and Google writes.
+3. **CAL-03** multi-date bulk entry, then **GGL-02** Google writes (recurrence is now in place).
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -112,8 +113,8 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## 6. Overview and reliable reminders
 
-- [x] DASH-01 Today combines local/selected Google events and due tasks; week priorities include
-  clearly overdue work. Source and participant identity remain distinguishable.
+- [x] DASH-01 Today combines local/selected Google events and due tasks; task priorities include
+  clearly overdue work (see DASH-04). Source and participant identity remain distinguishable.
 - [x] DASH-02 Remove Overview “Next seven days” section (owner revision). Agenda remains;
   do not re-add the removed section to satisfy the older brief.
 - [x] DASH-03 Upcoming/Agenda workflow combining next-seven-day events **and tasks** without
@@ -121,6 +122,11 @@ participation. No further approval is needed merely to develop reversible local 
   the chosen date (default today) with events, open due tasks (time, assignee, priority, linked
   activity; high priority first) and an Overdue list when today is in range. Week/month unchanged.
   Isolated PostgreSQL test plus local phone-width visual check; CI result reported in handoff.
+- [x] DASH-04 Overview "Task priorities" lists all open tasks (owner request, Claude Code), high
+  priority first, then due date/time with undated last, with quick filters All, High priority,
+  Due in 7 days and Due in 1 day (today or tomorrow). Due filters include overdue tasks; counts
+  show on each filter. Server-side links work without JavaScript. Replaces the previous
+  eight-task weekly list. Isolated PostgreSQL test and local visual check.
 - [ ] REM-01 Choose a supported delivery channel and background schedule with owner-approved
   costs; document browser/device limitations and consent. Free web sleep is not a scheduler.
 - [ ] REM-02 Durable reminder jobs: time zones, configurable lead times, retry/backoff,
@@ -146,16 +152,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Changes: DASH-03 (PR 2) and CAL-02/TSK-02 recurrence (migration 0007,
-  python-dateutil, export format version 3), stacked on branch `dash-03-upcoming`.
-- Starting canonical GitHub commit: `d00763e3b93e402cf069f3c53be2dcdd67b769b8` (merged PR 1, REC-01); branch `cal-02-recurrence`.
+- Assistant: Claude Code. Change: DASH-04 Overview task priority filters (owner request).
+  DASH-03 (PR 2) and CAL-02/TSK-02 (PR 3) were merged earlier the same day.
+- Starting canonical GitHub commit: `ba4356f77943367493d5991f4d4e9022e0697798` (merged PR 3); branch `dash-04-task-priorities`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 66 organizer
-  tests passed, deploy check and migration drift check passed; local phone-width visual checks.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 67 organizer
+  tests passed, deploy check and migration drift check passed; local visual check.
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, Google writes/reminder delivery. Next: merge PRs 2 and 3, REC-01 drill, FND-03, CAL-03.
+  participation, Google writes/reminder delivery. Next: merge DASH-04, REC-01 drill, FND-03, CAL-03.
 
 ## Deferred until first release works
 
