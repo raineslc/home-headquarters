@@ -1,5 +1,5 @@
 import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 from django import forms
@@ -191,7 +191,11 @@ def detail(request, pk):
     for item in rows:
         if item.kind == 'event' and item.status == 'pending' and item.payload.get('start_date'):
             day = item.payload['start_date']
-            conflicts.extend(Activity.objects.filter(household=request.household, start_date__lte=day, end_date__gte=day)[:10])
+            try:
+                from .recurrence import household_events
+                conflicts.extend(household_events(request.household, date.fromisoformat(day), date.fromisoformat(day))[:10])
+            except ValueError:
+                pass
             from .google_service import shared_events
             conflicts.extend(shared_events(request.household, day, day)[:10])
     return render(request, 'assistant/review.html', {'section': 'assistant', 'plan': plan, 'review': review,

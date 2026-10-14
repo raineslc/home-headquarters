@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (Activity, AssistantPlan, AssistantSuggestion, FamilyMember, LunchPlan,
                      Membership, SetupRecord, Task)
+from .recurrence import validate_rule
 
 FORMAT = 'home-headquarters'
 MAX_ROWS = 20000
@@ -17,15 +18,20 @@ COLLECTIONS = {
     'members': {'id': str, 'name': str, 'role': str, 'color': str, 'archived': bool},
     'activities': {'id': str, 'title': str, 'start_date': str, 'end_date': str, 'start_time': (str, type(None)),
                    'end_time': (str, type(None)), 'all_day': bool, 'timezone': str, 'location': str, 'notes': str,
-                   'participants': list, 'reminder_minutes': (int, type(None))},
+                   'participants': list, 'reminder_minutes': (int, type(None)), 'recurrence': str, 'recurrence_exdates': list,
+                   'series': (str, type(None)), 'occurrence_date': (str, type(None))},
     'tasks': {'id': str, 'title': str, 'high_priority': bool, 'assignee': (str, type(None)), 'activity': (str, type(None)),
               'due_date': (str, type(None)), 'due_time': (str, type(None)), 'notes': str, 'completed_at': (str, type(None)),
-              'reminder_minutes': (int, type(None)), 'search_prompt': str, 'search_questions': str},
+              'reminder_minutes': (int, type(None)), 'search_prompt': str, 'search_questions': str, 'recurrence': str,
+              'recurrence_start': (str, type(None)), 'series_key': (str, type(None))},
     'lunches': {'child': str, 'date': str, 'choice': str},
     'assistant_plans': {'id': str, 'title': str, 'created_by': (str, type(None)), 'messages': list, 'reply': str,
                         'questions': list, 'status': str, 'error': str, 'revision': int, 'created_at': str,
                         'suggestions': list},
 }
+# Version 2 predates recurrence; its rows are upgraded with these defaults before validation.
+V2_DEFAULTS = {'activities': {'recurrence': '', 'recurrence_exdates': [], 'series': None, 'occurrence_date': None},
+               'tasks': {'recurrence': '', 'recurrence_start': None, 'series_key': None}}
 SUGGESTION = {'revision': int, 'kind': str, 'position': int, 'status': str, 'payload': dict,
               'activity': (str, type(None)), 'task': (str, type(None)), 'decided_by': (str, type(None)),
               'decided_at': (str, type(None))}
@@ -39,7 +45,7 @@ def snapshot(household):
     tasks = Task.objects.filter(household=household).order_by('due_date', 'title', 'id')
     plans = AssistantPlan.objects.filter(household=household).select_related('created_by').prefetch_related('suggestions__decided_by').order_by('created_at', 'id')
     return {
-        'format': FORMAT, 'version': 2, 'scope': 'household', 'exported_at': timezone.now().isoformat(),
+        'format': FORMAT, 'version': 3, 'scope': 'household', 'exported_at': timezone.now().isoformat(),
         'household': {'name': household.name, 'timezone': household.timezone},
         'notes': [{'title': x.title, 'created_at': iso(x.created_at)} for x in SetupRecord.objects.filter(household=household).order_by('created_at', 'id')],
         'members': [{'id': str(x.id), 'name': x.name, 'role': x.role, 'color': x.color, 'archived': x.archived} for x in members],
@@ -47,12 +53,14 @@ def snapshot(household):
             'id': str(x.id), 'title': x.title, 'start_date': iso(x.start_date), 'end_date': iso(x.end_date),
             'start_time': iso(x.start_time), 'end_time': iso(x.end_time), 'all_day': x.all_day, 'timezone': x.timezone,
             'location': x.location, 'notes': x.notes, 'participants': sorted(str(p.id) for p in x.participants.all()),
-            'reminder_minutes': x.reminder_minutes} for x in activities],
+            'reminder_minutes': x.reminder_minutes, 'recurrence': x.recurrence, 'recurrence_exdates': sorted(x.recurrence_exdates),
+            'series': str(x.series_id) if x.series_id else None, 'occurrence_date': iso(x.occurrence_date)} for x in activities],
         'tasks': [{
             'id': str(x.id), 'title': x.title, 'high_priority': x.high_priority,
             'assignee': str(x.assignee_id) if x.assignee_id else None, 'activity': str(x.activity_id) if x.activity_id else None,
             'due_date': iso(x.due_date), 'due_time': iso(x.due_time), 'notes': x.notes, 'completed_at': iso(x.completed_at),
-            'reminder_minutes': x.reminder_minutes, 'search_prompt': x.search_prompt, 'search_questions': x.search_questions} for x in tasks],
+            'reminder_minutes': x.reminder_minutes, 'search_prompt': x.search_prompt, 'search_questions': x.search_questions,
+            'recurrence': x.recurrence, 'recurrence_start': iso(x.recurrence_start), 'series_key': str(x.series_key) if x.series_key else None} for x in tasks],
         'lunches': [{'child': str(x.child_id), 'date': iso(x.date), 'choice': x.choice}
                     for x in LunchPlan.objects.filter(household=household).order_by('date', 'child_id')],
         'assistant_plans': [{
@@ -99,7 +107,7 @@ def validate_header(data):
     if not isinstance(data, dict) or data.get('format') != FORMAT:
         raise ValidationError('This is not a supported household export.')
     version = data.get('version')
-    if type(version) is not int or version not in (1, 2):
+    if type(version) is not int or version not in (1, 2, 3):
         raise ValidationError('This export version is not supported.')
     household = data.get('household')
     if not isinstance(household, dict) or set(household) != {'name', 'timezone'}:
@@ -127,9 +135,23 @@ def validate_snapshot(data):
             raise ValidationError('A record has an invalid title.')
     return data['records']
 
+def upgrade(data):
+    """Return a version 3 copy of a version 2 export; other data is returned unchanged."""
+    if not isinstance(data, dict) or data.get('version') != 2:
+        return data
+    data = dict(data, version=3)
+    for name, defaults in V2_DEFAULTS.items():
+        if isinstance(data.get(name), list):
+            data[name] = [defaults | row if isinstance(row, dict) and not set(defaults) & set(row) else row for row in data[name]]
+    return data
+
 def validate_household(data):
-    """Validate a version 2 export completely, including every cross-reference, before any write."""
-    if validate_header(data) != 2 or set(data) != {'format', 'version', 'scope', 'exported_at', 'household', *COLLECTIONS} or data['scope'] != 'household':
+    """Validate a version 2 or 3 export completely, including every cross-reference, before any write.
+
+    Returns the export upgraded to version 3."""
+    version = validate_header(data)
+    data = upgrade(data)
+    if version not in (2, 3) or set(data) != {'format', 'version', 'scope', 'exported_at', 'household', *COLLECTIONS} or data['scope'] != 'household':
         raise ValidationError('This is not a supported household export.')
     for name, spec in COLLECTIONS.items():
         if not isinstance(data[name], list) or len(data[name]) > MAX_ROWS:
@@ -151,22 +173,51 @@ def validate_household(data):
     for row in data['members']:
         check_model(FamilyMember(**{k: v for k, v in row.items() if k != 'id'}), ['household'], 'A family member')
     activities = unique_ids(data['activities'], 'activity')
+    series_rows = {row['id']: row for row in data['activities'] if row['recurrence']}
+    overrides = set()
     for row in data['activities']:
-        values = {k: v for k, v in row.items() if k not in ('id', 'participants')}
+        values = {k: v for k, v in row.items() if k not in ('id', 'participants', 'series', 'recurrence_exdates')}
         item = Activity(**values)
         check_model(item, ['household'], 'An activity')
         check_zone(row['timezone'], 'An activity')
         if item.end_date < item.start_date:
             raise ValidationError('An activity ends before it starts.')
+        if row['recurrence']:
+            validate_rule(row['recurrence'], item.start_date)
+        dates = row['recurrence_exdates']
+        try:
+            if any(not isinstance(value, str) or date.fromisoformat(value).isoformat() != value for value in dates) or len(set(dates)) != len(dates):
+                raise ValueError
+        except ValueError:
+            raise ValidationError('An activity has an invalid skipped date.')
+        if row['series'] is not None:
+            parent = series_rows.get(row['series'])
+            if parent is None or parent['series'] is not None or row['recurrence'] or not item.occurrence_date:
+                raise ValidationError('A changed occurrence refers to a repeating activity that is not in the export.')
+            if (row['series'], item.occurrence_date) in overrides:
+                raise ValidationError('The export changes the same occurrence twice.')
+            overrides.add((row['series'], item.occurrence_date))
+        elif item.occurrence_date:
+            raise ValidationError('An activity has an occurrence date without a repeating activity.')
         refs = row['participants']
         if any(not isinstance(ref, str) for ref in refs) or len(set(refs)) != len(refs) or not set(refs) <= members:
             raise ValidationError('An activity refers to a family member that is not in the export.')
     tasks = unique_ids(data['tasks'], 'task')
+    series_dates = set()
     for row in data['tasks']:
         values = {k: v for k, v in row.items() if k not in ('id', 'assignee', 'activity', 'completed_at')}
-        check_model(Task(**values), ['household', 'assignee', 'activity'], 'A task')
+        task = Task(**values)
+        check_model(task, ['household', 'assignee', 'activity'], 'A task')
         if row['completed_at']:
             stamp(row['completed_at'], 'A task')
+        if row['recurrence']:
+            if not (task.recurrence_start and task.due_date and task.series_key):
+                raise ValidationError('A repeating task is missing its due date or series.')
+            validate_rule(row['recurrence'], task.recurrence_start)
+        if task.series_key:
+            if (task.series_key, task.due_date) in series_dates:
+                raise ValidationError('The export repeats a task in the same series and date.')
+            series_dates.add((task.series_key, task.due_date))
         if row['assignee'] and row['assignee'] not in members or row['activity'] and row['activity'] not in activities:
             raise ValidationError('A task refers to a family member or activity that is not in the export.')
     lunch_days = set()
@@ -207,9 +258,8 @@ def validate_any(data):
     """Validate either supported export version and return its row counts."""
     if isinstance(data, dict) and data.get('version') == 1:
         validate_snapshot(data)
-    else:
-        validate_household(data)
-    return summarize(data)
+        return summarize(data)
+    return summarize(validate_household(data))
 
 def remap_payload(payload, members):
     payload = dict(payload)
@@ -231,7 +281,7 @@ def replace_household_data(household, user, data):
         SetupRecord.objects.filter(household=household).delete()
         SetupRecord.objects.bulk_create([SetupRecord(household=household, title=row['title']) for row in rows])
         return
-    validate_household(data)
+    data = validate_household(data)
     AssistantPlan.objects.filter(household=household).delete()
     Task.objects.filter(household=household).delete()
     LunchPlan.objects.filter(household=household).delete()
@@ -247,18 +297,23 @@ def replace_household_data(household, user, data):
         members[row['id']] = FamilyMember(household=household, **{k: v for k, v in row.items() if k != 'id'})
     FamilyMember.objects.bulk_create(members.values())
     activities, links = {}, []
-    for row in data['activities']:
-        item = Activity(household=household, **{k: v for k, v in row.items() if k not in ('id', 'participants')})
+    # Series before their changed occurrences, so each override can point at its new series ID.
+    for row in sorted(data['activities'], key=lambda row: row['series'] is not None):
+        item = Activity(household=household, series=activities.get(row['series']),
+                        **{k: v for k, v in row.items() if k not in ('id', 'participants', 'series')})
         activities[row['id']] = item
         links.extend((item, members[ref]) for ref in row['participants'])
-    Activity.objects.bulk_create(activities.values())
+    Activity.objects.bulk_create([item for item in activities.values() if item.series is None])
+    Activity.objects.bulk_create([item for item in activities.values() if item.series is not None])
     Through = Activity.participants.through
     Through.objects.bulk_create([Through(activity_id=a.pk, familymember_id=m.pk) for a, m in links])
-    tasks = {}
+    tasks, series_keys = {}, {}
     for row in data['tasks']:
-        values = {k: v for k, v in row.items() if k not in ('id', 'assignee', 'activity', 'completed_at')}
+        values = {k: v for k, v in row.items() if k not in ('id', 'assignee', 'activity', 'completed_at', 'series_key')}
+        # New series keys keep repeating-task uniqueness when restoring beside the original household.
+        key = series_keys.setdefault(row['series_key'], uuid.uuid4()) if row['series_key'] else None
         tasks[row['id']] = Task(household=household, assignee=members.get(row['assignee']), activity=activities.get(row['activity']),
-                                completed_at=stamp(row['completed_at'], 'A task') if row['completed_at'] else None, **values)
+                                completed_at=stamp(row['completed_at'], 'A task') if row['completed_at'] else None, series_key=key, **values)
     Task.objects.bulk_create(tasks.values())
     LunchPlan.objects.bulk_create([LunchPlan(household=household, child=members[row['child']], date=row['date'], choice=row['choice'])
                                    for row in data['lunches']])

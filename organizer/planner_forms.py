@@ -1,11 +1,64 @@
+import uuid
 from datetime import datetime, timezone as utc_timezone
 from zoneinfo import ZoneInfo
 from django import forms
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from .models import Activity, FamilyMember, Task
+from .recurrence import WEEKDAYS, WEEKDAY_NAMES, build_rule, first_on_or_after, rule_fields
+
+REPEATS = [('', 'Does not repeat'), ('DAILY', 'Daily'), ('WEEKLY', 'Weekly'), ('MONTHLY', 'Monthly'), ('YEARLY', 'Yearly')]
+
+REPEAT_NAMES = ['repeat', 'interval', 'weekdays', 'monthly_by', 'ends', 'until', 'count']
+
+def add_repeat_fields(form, rule):
+    """Structured repeat controls; the form builds and validates an RRULE from them."""
+    form.repeat_names = REPEAT_NAMES
+    initial = rule_fields(rule)
+    form.fields['repeat'] = forms.ChoiceField(choices=REPEATS, required=False, initial=initial['repeat'], label='Repeats')
+    form.fields['interval'] = forms.IntegerField(min_value=1, max_value=99, initial=initial['interval'], required=False, label='Every (days, weeks, months or years)')
+    form.fields['weekdays'] = forms.MultipleChoiceField(choices=list(zip(WEEKDAYS, WEEKDAY_NAMES)), required=False, initial=initial.get('weekdays', []),
+                                                        widget=forms.CheckboxSelectMultiple, label='On (weekly)')
+    form.fields['monthly_by'] = forms.ChoiceField(choices=[('day', 'Same day of the month'), ('weekday', 'Same weekday, such as the second Tuesday')],
+                                                  initial=initial.get('monthly_by', 'day'), required=False, label='Monthly on')
+    form.fields['ends'] = forms.ChoiceField(choices=[('never', 'Never'), ('until', 'On a date'), ('count', 'After a number of times')],
+                                            initial=initial['ends'], required=False, label='Ends')
+    form.fields['until'] = forms.DateField(required=False, initial=initial.get('until'), widget=forms.DateInput(attrs={'type': 'date'}), label='End date')
+    form.fields['count'] = forms.IntegerField(min_value=1, max_value=500, required=False, initial=initial.get('count'), label='Number of times')
+
+def clean_repeat(form, data, anchor, anchor_field, realign=''):
+    """Build the rule. realign='forward' moves a non-matching first date to the next match (and the
+    end date with it); 'skip' leaves alignment to the caller; '' requires the first date to match."""
+    if not data.get('repeat'):
+        return ''
+    if not anchor:
+        form.add_error(anchor_field, 'Choose a date for the first occurrence.')
+        return ''
+    ends = data.get('ends') or 'never'
+    if ends == 'until' and not data.get('until'):
+        form.add_error('until', 'Choose the last date.')
+        return ''
+    if ends == 'count' and not data.get('count'):
+        form.add_error('count', 'Choose how many times.')
+        return ''
+    try:
+        rule = build_rule(data['repeat'], data.get('interval') or 1, anchor, data.get('weekdays') or (),
+                          data.get('monthly_by') or 'day', ends, data.get('until'), data.get('count'), check_anchor=not realign)
+        if realign == 'forward':
+            first = first_on_or_after(rule, anchor)
+            if first is None:
+                raise ValidationError('This repeat pattern has no dates on or after the chosen date.')
+            if first != anchor:
+                data['end_date'] = data['end_date'] + (first - anchor) if data.get('end_date') else first
+                data[anchor_field] = first
+        return rule
+    except ValidationError as error:
+        form.add_error('repeat', error)
+        return ''
 
 class VersionForm(forms.ModelForm):
     version = forms.IntegerField(widget=forms.HiddenInput, initial=0, min_value=0)
+    repeat_names = ()
 
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,8 +78,11 @@ class ActivityForm(VersionForm):
         widgets = {'start_date': forms.DateInput(attrs={'type': 'date'}), 'end_date': forms.DateInput(attrs={'type': 'date'}), 'start_time': forms.TimeInput(attrs={'type': 'time'}), 'end_time': forms.TimeInput(attrs={'type': 'time'}), 'participants': forms.CheckboxSelectMultiple(), 'notes': forms.Textarea(attrs={'rows': 3})}
         labels = {'end_date': 'Last day', 'participants': 'Who is going?'}
 
-    def __init__(self, *args, household, **kwargs):
+    def __init__(self, *args, household, repeat=False, realign='', **kwargs):
         super().__init__(*args, household=household, **kwargs)
+        self.repeat, self.realign = repeat, realign
+        if repeat:
+            add_repeat_fields(self, self.instance.recurrence)
         included = self.instance.participants.values_list('pk', flat=True) if not self.instance._state.adding else []
         if 'participants' in self.fields:
             self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
@@ -58,7 +114,14 @@ class ActivityForm(VersionForm):
                     self.add_error('end_time', 'The end must be after the start.')
         if start and end and end < start:
             self.add_error('end_date', 'The last day cannot be before the first day.')
+        if self.repeat:
+            data['recurrence'] = clean_repeat(self, data, start, 'start_date', self.realign)
         return data
+
+    def save(self, commit=True):
+        if self.repeat:
+            self.instance.recurrence = self.cleaned_data['recurrence']
+        return super().save(commit)
 
 class TaskForm(VersionForm):
     class Meta:
@@ -67,8 +130,11 @@ class TaskForm(VersionForm):
         widgets = {'due_date': forms.DateInput(attrs={'type': 'date'}), 'due_time': forms.TimeInput(attrs={'type': 'time'}), 'notes': forms.Textarea(attrs={'rows': 3})}
         labels = {'activity': 'Preparation for activity', 'assignee': 'Responsible person'}
 
-    def __init__(self, *args, household, **kwargs):
+    def __init__(self, *args, household, repeat=False, **kwargs):
         super().__init__(*args, household=household, **kwargs)
+        self.repeat = repeat
+        if repeat:
+            add_repeat_fields(self, self.instance.recurrence)
         self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk=self.instance.assignee_id)).order_by('name')
         self.fields['assignee'].empty_label = 'Household'
         if 'activity' in self.fields:
@@ -85,7 +151,21 @@ class TaskForm(VersionForm):
             self.add_error('due_date', 'Choose a date for this deadline.')
         if data.get('reminder_minutes') and not data.get('due_date'):
             self.add_error('due_date', 'Choose a deadline to save a reminder preference.')
+        if self.repeat:
+            data['recurrence'] = clean_repeat(self, data, data.get('due_date'), 'due_date')
         return data
+
+    def save(self, commit=True):
+        if self.repeat:
+            rule = self.cleaned_data['recurrence']
+            if rule and (rule != self.instance.recurrence or not self.instance.series_key):
+                # A new or changed rule starts a new series from this task's due date.
+                self.instance.recurrence_start = self.cleaned_data['due_date']
+                self.instance.series_key = uuid.uuid4()
+            elif not rule:
+                self.instance.recurrence_start = self.instance.series_key = None
+            self.instance.recurrence = rule
+        return super().save(commit)
 
 class QuickActivityForm(ActivityForm):
     class Meta(ActivityForm.Meta):

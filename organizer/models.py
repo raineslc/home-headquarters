@@ -83,9 +83,16 @@ class Activity(models.Model):
     participants = models.ManyToManyField(FamilyMember, blank=True)
     version = models.PositiveIntegerField(default=1)
     reminder_minutes = models.PositiveIntegerField(null=True, blank=True)
+    # A series stores an RFC 5545 RRULE anchored on start_date; skipped or changed dates are
+    # listed in recurrence_exdates. A changed occurrence is its own Activity with series set.
+    recurrence = models.CharField(max_length=300, blank=True)
+    recurrence_exdates = models.JSONField(default=list, blank=True)
+    series = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='overrides')
+    occurrence_date = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['start_date', 'start_time', 'title']
+        constraints = [models.UniqueConstraint(fields=['series', 'occurrence_date'], name='one_override_per_occurrence')]
 
     def __str__(self):
         return self.title
@@ -105,9 +112,14 @@ class Task(models.Model):
     reminder_minutes = models.PositiveIntegerField(null=True, blank=True)
     search_prompt = models.CharField(max_length=500, blank=True)
     search_questions = models.CharField(max_length=500, blank=True)
+    # Repeating tasks: completing one creates the next due date once; series_key + due_date is unique.
+    recurrence = models.CharField(max_length=300, blank=True)
+    recurrence_start = models.DateField(null=True, blank=True)
+    series_key = models.UUIDField(null=True, blank=True)
 
     class Meta:
         ordering = ['-high_priority', 'due_date', 'title']
+        constraints = [models.UniqueConstraint(fields=['series_key', 'due_date'], name='one_task_per_series_date')]
 
 class LunchPlan(models.Model):
     household = models.ForeignKey(Household, on_delete=models.CASCADE)

@@ -20,9 +20,10 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
 | Path | Responsibility |
 |---|---|
 | hq/settings.py, urls.py | Configuration, middleware and routes |
-| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0006) |
+| organizer/models.py, migrations/ | Durable models and versioned schema (0001–0007) |
 | organizer/views.py, forms.py | Authentication, parent authorization, bootstrap, foundation UI |
 | organizer/planner.py, planner_forms.py | Calendar, family, tasks, lunch planning and validation |
+| organizer/recurrence.py | RRULE building/validation, occurrence expansion and clock-change handling |
 | organizer/invitations.py | Expiring email-bound single-use invitation links |
 | organizer/connections.py, google_service.py | OAuth ownership, sharing choices and manual sync |
 | organizer/assistant.py, assistant_forms.py | Proposal history, edits, approvals and external search |
@@ -40,7 +41,13 @@ run_jobs currently implements a locked/deduplicated heartbeat only; no real remi
   have login accounts in this preview.
 - Activity holds local dates/times, time zone, participants, notes, location and version.
   Task optionally links an activity and assignee; stores deadline, completion timestamp,
-  priority, search prompt/questions and reminder preference. No local recurrence model yet.
+  priority, search prompt/questions and reminder preference.
+- Recurrence: an Activity series stores an RFC 5545 RRULE (no DTSTART; anchored on start_date,
+  which must be an occurrence) plus recurrence_exdates. A changed occurrence is a separate
+  Activity with series and occurrence_date (unique together) and the date added to exdates.
+  Views expand series per date window (recurrence.household_events); an Occurrence wrapper
+  carries the instance date. Wall times follow Option A for clock changes. A repeating Task
+  stores recurrence, recurrence_start and series_key; completion creates the next due date once.
 - LunchPlan is unique per child/date; household-scoped bulk operations use versioned undo.
 - GoogleConnection belongs to a parent/household, with encrypted refresh token.
   GoogleCalendar holds visibility, permissions, source color and sync metadata.
@@ -100,8 +107,10 @@ they are not integrated research results. See docs/assistant-preview.md.
 
 ## Recovery and release limitations
 
-Exports use format home-headquarters, version 2, scope household: notes, family members,
-activities with participants, tasks, lunch plans and assistant plans with suggestions.
+Exports use format home-headquarters, version 3, scope household: notes, family members,
+activities with participants and recurrence (series, exdates, changed occurrences), tasks with
+recurrence, lunch plans and assistant plans with suggestions. Version 2 files are upgraded with
+non-repeating defaults on restore; series keys are regenerated so restores never collide.
 Accounts, memberships, invitations, Google connections/tokens/event caches, usage counters
 and recovery points are never exported; plan/suggestion authors appear as parent emails.
 Restore validates every field (model validation) and cross-reference before writing, stores
@@ -112,4 +121,4 @@ accounts and connections are unchanged. Unknown authors fall back to the restori
 Version 1 notes-only exports still restore notes only. `manage.py export_household <file>`
 writes the same export for operators. A hosted isolated recovery drill is still pending.
 Source Git history and bundles cannot recover live household data. No scheduler, notification channel,
-closed-app delivery, local recurrence, bulk event dates or Google write workflow exists yet.
+closed-app delivery, bulk event dates or Google write workflow exists yet.

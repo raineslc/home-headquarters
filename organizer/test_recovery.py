@@ -25,9 +25,11 @@ def canonical(data):
     for row in result['activities']:
         row.pop('id')
         row['participants'] = sorted(members[x] for x in row['participants'])
+        row['series'] = activities.get(row['series'])
     for row in result['tasks']:
         row.pop('id')
         row['assignee'], row['activity'] = members.get(row['assignee']), activities.get(row['activity'])
+        row['series_key'] = bool(row['series_key'])
     for row in result['lunches']:
         row['child'] = members[row['child']]
     for plan in result['assistant_plans']:
@@ -198,7 +200,7 @@ class HouseholdRecoveryTests(TestCase):
             mutate(['assistant_plans', 0, 'suggestions', 0, 'task'], str(uuid.uuid4())),
             mutate(['assistant_plans', 0, 'suggestions', 0, 'kind'], 'email'),
             mutate(['notes'], [{'title': ''}]),
-            mutate(['version'], 3),
+            mutate(['version'], 4),
             mutate(['scope'], 'foundation'),
             mutate(['household', 'timezone'], 'Nowhere'),
         ]
@@ -251,7 +253,7 @@ class HouseholdRecoveryTests(TestCase):
         self.apply()
         self.assertEqual(list(SetupRecord.objects.filter(household=self.house).values_list('title', flat=True)), ['Old note'])
         self.assertEqual(Task.objects.filter(household=self.house).count(), 2)
-        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 2)
+        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 3)
 
     def test_export_household_command(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -4,6 +4,25 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-14 — Repeating activities and tasks
+
+- Author: Claude Code. Tasks: CAL-02, TSK-02 (owner chose Option A for clock-change times).
+- Activities can repeat daily, weekly on chosen days, monthly by date or nth weekday, or yearly,
+  every N periods, ending never, on a date or after a count. Occurrences appear in week, month,
+  Upcoming, Today and assistant date checks. Edit or delete only this occurrence, this and
+  following, or all; a changed occurrence becomes its own linked activity.
+- Clock changes: a skipped spring-forward time moves forward by the gap; a repeated fall-back
+  time uses the first. The first date must match the pattern; occurrence edits that change the
+  pattern start on its first matching date.
+- Tasks can repeat from their due date; completing one creates the next once. Deleting offers
+  skip-to-next or stop.
+- Export format version 3 includes recurrence; version 2 exports still restore. Migration 0007;
+  new dependency python-dateutil 2.9.0.post0 (with six 1.17.0).
+- Validation: 66 organizer tests on local isolated PostgreSQL; deploy and migration checks;
+  phone-width visual check on local test data.
+- Limitations: "this and following" removes later single-date changes and restarts a count;
+  preparation tasks link to the whole series; the assistant cannot propose repeats yet (AI-04).
+
 ## 2026-10-14 — Upcoming seven-day agenda
 
 - Author: Claude Code. Task: DASH-03.

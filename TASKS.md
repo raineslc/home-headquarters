@@ -3,7 +3,7 @@
 Authoritative shared backlog, migrated from the owner's original eleven-part brief,
 README roadmap and subsequent accepted changes. Last reconciled: October 14, 2026.
 Owner for next work: Claude Code. REC-01 code is merged (PR 1); its hosted recovery drill remains.
-DASH-03 is complete; CAL-02/TSK-02 recurrence is in progress (owner chose Option A for DST times).
+DASH-03 and CAL-02/TSK-02 recurrence are complete (owner chose Option A for clock-change times).
 
 Statuses: `[x]` implemented with stated evidence; `[ ]` pending or partial (details follow).
 An implemented feature is not proof of complete production readiness. Keep stable IDs.
@@ -14,7 +14,7 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
    isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
-3. **CAL-02 / TSK-02** (in progress, Claude Code), then **CAL-03**, **GGL-02**: recurrence/bulk calendar foundations and Google writes.
+3. **CAL-03** multi-date bulk entry, then **GGL-02** Google writes (recurrence is now in place): recurrence/bulk calendar foundations and Google writes.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
 
@@ -57,13 +57,23 @@ participation. No further approval is needed merely to develop reversible local 
 
 - [x] CAL-01 Week/month/agenda; create/edit/delete one-off activities; dates/times, all-day,
   multi-day, notes, location and multiple participants; household-zone/DST validation.
-- [ ] CAL-02 Daily/weekly/monthly/custom recurrence with explicit occurrence-versus-series edits,
-  exceptions/deletions and DST/multi-day tests. Current Google recurrence is expanded by Google;
-  that does not implement local recurrence. Decide how to represent ambiguous DST times.
+- [x] CAL-02 Daily/weekly/monthly/custom recurrence with explicit occurrence-versus-series edits,
+  exceptions/deletions and DST/multi-day tests (Claude Code). Series store an RFC 5545 RRULE
+  (daily/weekly with weekdays/monthly by day or nth weekday/yearly, interval, until or count)
+  anchored on a first date that must match the pattern; skipped dates are exdates and a changed
+  occurrence is its own Activity linked to the series. Edit/delete: only this, this and following
+  (series split), or all (date shifts move the series, exdates and changes). DST decision (owner,
+  Option A, matches Google): a skipped spring-forward time moves forward by the gap; a repeated
+  fall-back time uses the first. Isolated PostgreSQL tests incl. DST, multi-day and splits.
+  Limits: "this and following" removes later single-occurrence changes and restarts a COUNT;
+  preparation tasks link to the series, not one date; the assistant cannot propose repeats yet.
 - [ ] CAL-03 Multi-date bulk activity entry with reviewed date selection and atomic validation.
 - [x] TSK-01 Task CRUD, complete/reopen timestamp, member/household assignment, due date/time,
   linked activity and visible preparation tasks; stale-edit checks.
-- [ ] TSK-02 Recurring tasks and completion/next-occurrence semantics; no duplicate generation.
+- [x] TSK-02 Recurring tasks and completion/next-occurrence semantics; no duplicate generation
+  (Claude Code). A repeating task needs a due date; completing it creates the next due date once
+  (series key + due date unique; reopen/re-complete cannot duplicate). Delete offers skip-to-next or
+  stop. Changing the rule starts a new series. Only the current task exists; future ones are not shown.
 - [x] UX-01 Inline quick Add activity/Add task on Overview; high-priority tasks sort first.
   PostgreSQL CI 38462765334; deployed preview.
 
@@ -136,14 +146,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: REC-01 full household export/restore (code, migration 0006, tests).
-- Starting canonical GitHub commit: `f5d15799e204d86e27411cb95ab0b75c2dce3ff9` (HANDOFF-01); branch `rec-01-full-household-recovery`.
+- Assistant: Claude Code. Changes: DASH-03 (PR 2) and CAL-02/TSK-02 recurrence (migration 0007,
+  python-dateutil, export format version 3), stacked on branch `dash-03-upcoming`.
+- Starting canonical GitHub commit: `d00763e3b93e402cf069f3c53be2dcdd67b769b8` (merged PR 1, REC-01); branch `cal-02-recurrence`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 43 organizer
-  tests passed, deploy check, migration drift check and collectstatic passed. GitHub Actions CI 38578064839 passed on 4c1323b.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 66 organizer
+  tests passed, deploy check and migration drift check passed; local phone-width visual checks.
+  CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, recurrence/Google writes/reminder delivery. Next: merge, deploy, REC-01 drill, FND-03.
+  participation, Google writes/reminder delivery. Next: merge PRs 2 and 3, REC-01 drill, FND-03, CAL-03.
 
 ## Deferred until first release works
 

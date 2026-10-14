@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -16,6 +16,7 @@ from .planner_forms import ActivityForm, MemberForm, TaskForm, QuickActivityForm
 from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
+from .recurrence import describe, end_before, first_on_or_after, household_events, next_date, occurrence_of
 
 def chosen_date(request):
     try:
@@ -97,7 +98,7 @@ def dashboard(request):
     count = 42 if mode == 'month' else 7
     days = [start + timedelta(days=i) for i in range(count)]
     end = days[-1]
-    events = list(Activity.objects.filter(household=request.household, start_date__lte=end, end_date__gte=start).prefetch_related('participants'))
+    events = household_events(request.household, start, end)
     events += shared_events(request.household, start, end)
     events.sort(key=lambda event: (event.start_date, event.start_time.isoformat() if event.start_time else '', event.title))
     task_query = Task.objects.filter(household=request.household).select_related('assignee', 'activity')
@@ -106,7 +107,7 @@ def dashboard(request):
     school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
     cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
     priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True) | Q(high_priority=True)).order_by('-high_priority', 'due_date', 'title')[:8]
-    today_events = list(Activity.objects.filter(household=request.household, start_date__lte=today, end_date__gte=today).prefetch_related('participants')) + shared_events(request.household, today, today)
+    today_events = household_events(request.household, today, today) + shared_events(request.household, today, today)
     today_events.sort(key=lambda event: (event.start_time.isoformat() if event.start_time else '', event.title))
     quick_context['google_calendars'] = GoogleCalendar.objects.filter(connection__household=request.household, connection__owner__membership__active=True, connection__owner__membership__household=request.household).exclude(visibility='off').select_related('connection')
     if mode == 'month':
@@ -136,8 +137,41 @@ def tasks(request):
 @parent_only
 @require_GET
 def activity_detail(request, pk):
-    item = get_object_or_404(Activity.objects.prefetch_related('participants'), pk=pk, household=request.household)
-    return render(request, 'planner/activity.html', {'section': 'home', 'item': item, 'tasks': item.tasks.select_related('assignee').all()})
+    series = get_object_or_404(Activity.objects.prefetch_related('participants'), pk=pk, household=request.household)
+    item = requested_occurrence(request, series)
+    return render(request, 'planner/activity.html', {'section': 'home', 'item': item, 'series': series, 'repeats': describe(series.recurrence, series.start_date),
+                                                     'occurrence': getattr(item, 'instance_date', None), 'tasks': series.tasks.select_related('assignee').all()})
+
+def requested_occurrence(request, series):
+    """The occurrence named by ?occurrence= (or a hidden POST field); the activity itself when none is named."""
+    value = request.POST.get('occurrence') or request.GET.get('occurrence')
+    if not value:
+        return series
+    try:
+        day = date.fromisoformat(value)
+    except ValueError:
+        raise Http404('Unknown occurrence')
+    occurrence = occurrence_of(series, day)
+    if occurrence is None:
+        raise Http404('Unknown occurrence')
+    return occurrence
+
+def shift_dates(values, delta):
+    return [(date.fromisoformat(value) + delta).isoformat() for value in values]
+
+def next_task(task):
+    """Create the following task in a repeating series once; returns it, or None when the series ended."""
+    if not (task.recurrence and task.series_key and task.recurrence_start and task.due_date):
+        return None
+    due = next_date(task.recurrence, task.recurrence_start, task.due_date)
+    if due is None:
+        return None
+    following, _ = Task.objects.get_or_create(series_key=task.series_key, due_date=due, defaults={
+        'household': task.household, 'title': task.title, 'high_priority': task.high_priority, 'assignee': task.assignee,
+        'activity': task.activity, 'due_time': task.due_time, 'notes': task.notes, 'reminder_minutes': task.reminder_minutes,
+        'search_prompt': task.search_prompt, 'search_questions': task.search_questions, 'recurrence': task.recurrence,
+        'recurrence_start': task.recurrence_start})
+    return following
 
 @parent_only
 @require_http_methods(['GET', 'POST'])
@@ -147,13 +181,17 @@ def edit(request, kind, pk=None):
         return HttpResponse(status=404)
     model, form_class, label = config[kind]
     instance = get_object_or_404(model, pk=pk, household=request.household) if pk else None
+    if kind == 'activity' and instance and instance.recurrence and (request.GET.get('occurrence') or request.POST.get('occurrence')):
+        return edit_occurrence(request, instance)
     initial = {}
     if not pk and kind == 'activity':
         initial = {'start_date': chosen_date(request), 'end_date': chosen_date(request)}
     if not pk and kind == 'task' and request.GET.get('activity'):
         linked = get_object_or_404(Activity, pk=request.GET['activity'], household=request.household)
         initial['activity'] = linked.pk
-    form = form_class(request.POST or None, instance=instance, household=request.household, initial=initial)
+    repeat = kind == 'task' or kind == 'activity' and not (instance and instance.series_id)
+    extra = {'repeat': repeat} if kind != 'member' else {}
+    form = form_class(request.POST or None, instance=instance, household=request.household, initial=initial, **extra)
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
             household = Household.objects.select_for_update().get(pk=request.household.pk)
@@ -173,6 +211,72 @@ def edit(request, kind, pk=None):
         return redirect('activity_detail', pk=item.pk) if kind == 'activity' else redirect('tasks' if kind == 'task' else 'family')
     return render(request, 'planner/edit.html', {'section': 'family' if kind == 'member' else 'tasks' if kind == 'task' else 'home', 'form': form, 'label': label, 'item': instance, 'kind': kind, 'zone': request.household.timezone})
 
+SCOPES = {'one': 'Only this occurrence', 'following': 'This and following occurrences', 'all': 'All occurrences'}
+
+def chosen_scope(request):
+    scope = request.POST.get('scope', 'one')
+    return scope if scope in SCOPES else 'one'
+
+def edit_occurrence(request, series):
+    occurrence = requested_occurrence(request, series)
+    day = occurrence.instance_date
+    scope = chosen_scope(request) if request.method == 'POST' else 'one'
+    if scope == 'following' and day == series.start_date:
+        scope = 'all'
+    initial = {'start_date': occurrence.start_date, 'end_date': occurrence.end_date, 'start_time': occurrence.start_time, 'end_time': occurrence.end_time}
+    if request.method == 'POST':
+        # 'one' and 'following' save a new Activity; 'all' edits the series itself.
+        form = ActivityForm(request.POST, instance=series if scope == 'all' else None, household=request.household, repeat=scope != 'one',
+                            realign={'all': 'skip', 'following': 'forward'}.get(scope, ''))
+    else:
+        form = ActivityForm(instance=series, household=request.household, initial=initial, repeat=True)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            household = Household.objects.select_for_update().get(pk=request.household.pk)
+            latest = Activity.objects.select_for_update().get(pk=series.pk, household=household)
+            if form.cleaned_data['version'] != latest.version or occurrence_of(latest, day) is None:
+                return conflict(request)
+            if scope == 'all':
+                # Moving one occurrence's date moves the whole series by the same amount.
+                delta = form.cleaned_data['start_date'] - day
+                span = form.cleaned_data['end_date'] - form.cleaned_data['start_date']
+                item = form.save(commit=False)
+                item.start_date = latest.start_date + delta
+                if item.recurrence:
+                    # A changed pattern may not include the shifted first date; start at its first match.
+                    item.start_date = first_on_or_after(item.recurrence, item.start_date) or item.start_date
+                item.end_date = item.start_date + span
+                item.recurrence_exdates = shift_dates(latest.recurrence_exdates, delta)
+                if delta:
+                    for override in latest.overrides.all():
+                        override.occurrence_date += delta
+                        override.save(update_fields=['occurrence_date'])
+                item.version = latest.version + 1
+                item.timezone = household.timezone
+                item.save()
+                form.save_m2m()
+            else:
+                if scope == 'one':
+                    latest.recurrence_exdates = latest.recurrence_exdates + [day.isoformat()]
+                else:
+                    latest.recurrence = end_before(latest.recurrence, latest.start_date, day)
+                    latest.overrides.filter(occurrence_date__gte=day).delete()
+                latest.version += 1
+                latest.save(update_fields=['recurrence', 'recurrence_exdates', 'version'])
+                item = form.save(commit=False)
+                item.household = household
+                item.timezone = household.timezone
+                item.version = 1
+                if scope == 'one':
+                    item.series, item.occurrence_date, item.recurrence = latest, day, ''
+                item.save()
+                form.save_m2m()
+            bump(household)
+        messages.success(request, {'one': 'This occurrence was saved.', 'following': 'This and following occurrences were saved.', 'all': 'All occurrences were saved.'}[scope])
+        return redirect('activity_detail', pk=item.pk)
+    return render(request, 'planner/edit.html', {'section': 'home', 'form': form, 'label': 'activity', 'item': series, 'kind': 'activity', 'zone': request.household.timezone,
+                                                 'occurrence': day, 'scopes': SCOPES, 'scope': scope, 'repeats': describe(series.recurrence, series.start_date)})
+
 @parent_only
 @require_http_methods(['GET', 'POST'])
 def remove(request, kind, pk):
@@ -180,22 +284,45 @@ def remove(request, kind, pk):
     if not model:
         return HttpResponse(status=404)
     item = get_object_or_404(model, pk=pk, household=request.household)
+    occurrence = requested_occurrence(request, item) if kind == 'activity' and item.recurrence else None
+    day = getattr(occurrence, 'instance_date', None)
     if request.method == 'POST':
+        scope = chosen_scope(request) if day else 'all'
+        if scope == 'following' and day == item.start_date:
+            scope = 'all'
+        message = 'Family member updated.' if kind == 'member' else 'Plan deleted. Preparation tasks remain in your task list.' if kind == 'activity' else 'Task deleted.'
         with transaction.atomic():
             household = Household.objects.select_for_update().get(pk=request.household.pk)
             item = model.objects.select_for_update().get(pk=pk, household=household)
-            if not version_matches(request, item):
+            if not version_matches(request, item) or day and occurrence_of(item, day) is None:
                 return conflict(request)
             if kind == 'member':
                 item.archived = not item.archived
                 item.version += 1
                 item.save(update_fields=['archived', 'version'])
+            elif scope == 'one':
+                item.recurrence_exdates = item.recurrence_exdates + [day.isoformat()]
+                item.version += 1
+                item.save(update_fields=['recurrence_exdates', 'version'])
+                message = 'This occurrence was deleted.'
+            elif scope == 'following':
+                item.recurrence = end_before(item.recurrence, item.start_date, day)
+                item.overrides.filter(occurrence_date__gte=day).delete()
+                item.version += 1
+                item.save(update_fields=['recurrence', 'version'])
+                message = 'This and following occurrences were deleted.'
             else:
+                if kind == 'task' and item.recurrence and request.POST.get('task_scope') == 'skip':
+                    following = next_task(item)
+                    message = f'Skipped. Next due {following.due_date:%b} {following.due_date.day}.' if following else 'Task deleted. The repeat has ended.'
+                elif kind == 'task' and item.recurrence:
+                    message = 'Task deleted. It will not repeat again.'
                 item.delete()
             bump(household)
-        messages.success(request, 'Family member updated.' if kind == 'member' else 'Plan deleted. Preparation tasks remain in your task list.' if kind == 'activity' else 'Task deleted.')
+        messages.success(request, message)
         return redirect('family' if kind == 'member' else 'tasks' if kind == 'task' else 'home')
-    return render(request, 'planner/remove.html', {'item': item, 'kind': kind})
+    repeats = describe(item.recurrence, item.recurrence_start or item.due_date) if kind == 'task' else describe(item.recurrence, item.start_date) if kind == 'activity' else ''
+    return render(request, 'planner/remove.html', {'item': item, 'kind': kind, 'occurrence': day, 'scopes': SCOPES, 'repeats': repeats})
 
 @parent_only
 @require_POST
@@ -208,8 +335,12 @@ def complete(request, pk):
         task.completed_at = None if task.completed_at else timezone.now()
         task.version += 1
         task.save(update_fields=['completed_at', 'version'])
+        following = next_task(task) if task.completed_at else None
         bump(household)
-    messages.success(request, 'Task reopened.' if not task.completed_at else 'Task completed.')
+    message = 'Task reopened.' if not task.completed_at else 'Task completed.'
+    if following:
+        message += f' Next due {following.due_date:%b} {following.due_date.day}.'
+    messages.success(request, message)
     return redirect('tasks' if request.POST.get('origin') == 'tasks' else 'home')
 
 @parent_only
