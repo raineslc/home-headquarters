@@ -1,11 +1,30 @@
 # Organizer preview
 
-This increment turns the deployment foundation into a working household planner. All records use the same PostgreSQL database and parent authorization as the verified deployment.
+Current status: October 14, 2026. This is a working preview, not a production release.
+All records use the same PostgreSQL database and parent authorization.
 
-Available: week/month/agenda, timed and all-day multi-day activities, participants, task assignment and completion timestamps, linked preparation tasks, editable/archivable family profiles, weekly lunch selection across multiple dates, and version-protected lunch undo. Updates reject stale versions instead of overwriting a parent's changes.
+Available: week/month/agenda; timed/all-day/multi-day one-off activities; participants;
+task assignment, completion timestamps, priority and activity links; editable/archivable
+family profiles; monthly bulk lunch choices and version-protected undo; parent invitations;
+per-parent read-only Google calendar sharing/manual sync; real OpenAI proposal review,
+clarification, edits, approval/dismissal and explicit external task searches.
 
-The dashboard combines activities and due tasks. Weekly priorities include overdue work. Today's packed lunches appear separately from calendar activities. Source color is green; participant initials use separately labeled profile colors.
+Overview combines local and selected Google events with due tasks. Weekly priorities
+include overdue work; high priority sorts first. School-lunch selections appear on the
+calendar, packed lunches in the daily overview. The full lunch table and “Next seven days”
+section were removed from Overview by owner request. Quick activity/task forms are inline.
 
-Not yet available: recurring plans and occurrence edits, bulk activity creation, invitations, Google OAuth/sync, AI proposals/research, notification delivery, and full planner export/restore. These are release requirements, not completed features. The disabled assistant input is labeled as unavailable, and Settings records the preview limits. No sample events or tasks are inserted into real households.
+Still pending: local recurrence/occurrence edits, bulk activity dates, Google writes,
+unattended sync, real reminder delivery and full household export/restore. Melissa's live
+account/calendar verification and complete release QA also remain. Reminder preferences
+are saved only, and opening Google search is not completed AI research.
 
-Migration 0002 is additive. Existing users, notes, recovery points and secrets are preserved. The old foundation export only includes verification notes, as labeled in Settings. PostgreSQL CI tests cover isolation, stale edits, DST-invalid times, multi-day placement, task relationships, completion retry protection and lunch undo. Production scheduling remains unapproved.
+Migrations 0001–0005 preserve the existing foundation while adding organizer/connection/AI
+tables. Exports still include only foundation notes. Production paid scheduling has not
+been approved. Real-household sample AI proposals remain unapproved; creation/approval
+tests use isolated PostgreSQL fixtures.
+
+The shared checklist is [TASKS.md](../TASKS.md), product brief [PROJECT.md](../PROJECT.md),
+implementation map [ARCHITECTURE.md](../ARCHITECTURE.md), working rules
+[AGENTS.md](../AGENTS.md), and change history [CHANGELOG.md](../CHANGELOG.md).
+See [verification.md](verification.md) for observed results and remaining gaps.

@@ -2,12 +2,27 @@
 
 A new, private family organizer. **Current milestone: working organizer preview.**
 
+## Shared ChatGPT / Claude handoff
+
+The private repository is the source package: application, migrations, templates, assets,
+pinned dependencies, deployment configuration, tests and shared documentation.
+
+Read [AGENTS.md](AGENTS.md) first, then [PROJECT.md](PROJECT.md),
+[ARCHITECTURE.md](ARCHITECTURE.md), [TASKS.md](TASKS.md) and [CHANGELOG.md](CHANGELOG.md).
+[CLAUDE.md](CLAUDE.md) points Claude Code to the same shared rules.
+Both assistants must update tasks and changelog after every change and hand off an exact
+GitHub commit SHA. Use a fresh clone of `raineslc/home-headquarters` and check out that
+commit; do not merge the historical local mirror, whose commit SHAs differ from GitHub.
+GitHub's Download ZIP at a chosen commit provides a source-only archive; a clone also
+preserves history. Neither contains credentials or the live household database.
+
 ## Release status
 
-Not a production release. Local calendar views, one-off activities, linked tasks,
-editable family profiles, and weekly lunch planning are available. Parent invitations,
-recurrence, Google Calendar, AI proposals, full planner recovery, and delivered reminders
-remain outstanding. See docs/preview.md. Do not use the free testing environment as
+Not a production release. Calendar views, one-off activities, linked/high-priority tasks,
+editable family profiles, monthly lunches, parent invitations, read-only Google Calendar
+and real AI proposals/approvals are available. Recurrence, Google writes, unattended sync,
+full planner recovery and delivered reminders remain outstanding. See [TASKS.md](TASKS.md).
+Do not use the free testing environment as
 the only copy of important family plans.
 
 ## Architecture
@@ -79,7 +94,7 @@ and retrieve it in a fresh session.
 
 Exports currently support **foundation notes only**, format `home-headquarters`, version 1.
 They exclude account credentials, memberships, API keys, and OAuth secrets. They cannot
-yet back up the unimplemented organizer features.
+yet back up organizer records or assistant history.
 
 Restore is validated, previewed, and explicitly confirmed. It locks the household,
 rejects a stale preview if another parent changed data, saves the old state as a durable
@@ -102,16 +117,8 @@ is separate and requires paid PostgreSQL. Its restore drill is a release require
 - No hosted authentication, persistence, recovery, or delivery result is claimed until
   it has been observed and recorded in `docs/verification.md`.
 
-## Planned first release
+## First-release priorities
 
-1. Complete deployment and recovery gate.
-2. Separate parent accounts, secure invitations, editable and archivable family members.
-3. Calendar, recurrence exceptions, tasks, optimistic concurrency, preparation relationships.
-4. Google OAuth, selected calendars merged into unified views, weekly lunch grid.
-5. Validated AI proposals, editable item approvals, idempotent creation, explicit task search.
-6. Today/Upcoming views and independently verified background reminder delivery.
-7. Full release tests, exported-household recovery drill, operational documentation.
-
-The acceptance scenario is “Logan has a birthday party Saturday at 2 PM. We need a gift.”
-The assistant must clarify the date/end time/address and recipient age/budget as needed,
-propose the party and linked preparation tasks, and create nothing until approved.
+The prioritized checklist has moved to [TASKS.md](TASKS.md). Keep it as the single backlog;
+do not maintain a second roadmap here. [PROJECT.md](PROJECT.md) records the primary
+birthday-party acceptance scenario and accepted product changes.
