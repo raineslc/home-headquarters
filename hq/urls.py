@@ -2,8 +2,19 @@ from django.urls import path
 from django.contrib.auth.views import LogoutView
 from organizer import views
 from organizer import planner
+from organizer import connections, invitations
 
 urlpatterns = [
+    path('connections/google/', connections.index, name='google_connections'),
+    path('connections/google/connect/', connections.begin, name='google_begin'),
+    path('connections/google/callback/', connections.callback, name='google_callback'),
+    path('connections/google/<uuid:pk>/choices/', connections.choices, name='google_choices'),
+    path('connections/google/<uuid:pk>/sync/', connections.sync, name='google_sync'),
+    path('connections/google/<uuid:pk>/disconnect/', connections.disconnect, name='google_disconnect'),
+    path('connections/google/event/<uuid:pk>/', connections.event_detail, name='google_event'),
+    path('settings/parents/', invitations.index, name='parents'),
+    path('settings/parents/<uuid:pk>/cancel/', invitations.cancel, name='cancel_invite'),
+    path('join/', invitations.join, name='parent_join'),
     path('health/', views.health),
     path('sign-in/', views.SignIn.as_view(), name='login'),
     path('sign-out/', LogoutView.as_view(), name='logout'),

@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="card narrow"><h1>Join {{ invitation.household.name }}</h1><p>Create your separate parent sign-in for {{ invitation.email }}. You'll share access to this household's plans.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Create my parent account</button></form></section>{% endblock %}

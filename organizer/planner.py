@@ -12,6 +12,8 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from .models import Activity, FamilyMember, Household, LunchPlan, Task
 from .planner_forms import ActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm
 from .views import parent_only
+from .google_service import shared_events
+from .models import GoogleCalendar
 
 def chosen_date(request):
     try:
@@ -91,12 +93,16 @@ def dashboard(request):
     days = [start + timedelta(days=i) for i in range(count)]
     end = days[-1]
     events = list(Activity.objects.filter(household=request.household, start_date__lte=end, end_date__gte=start).prefetch_related('participants'))
+    events += shared_events(request.household, start, end)
+    events.sort(key=lambda event: (event.start_date, event.start_time.isoformat() if event.start_time else '', event.title))
     task_query = Task.objects.filter(household=request.household).select_related('assignee', 'activity')
     due_tasks = list(task_query.filter(completed_at__isnull=True, due_date__range=(start, end)))
     school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
     cells = [{'date': d, 'today': d == today, 'in_month': d.month == day.month, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
     priorities = task_query.filter(completed_at__isnull=True).filter(Q(due_date__lte=monday + timedelta(days=6)) | Q(due_date__isnull=True) | Q(high_priority=True)).order_by('-high_priority', 'due_date', 'title')[:8]
-    today_events = Activity.objects.filter(household=request.household, start_date__lte=today, end_date__gte=today).prefetch_related('participants')
+    today_events = list(Activity.objects.filter(household=request.household, start_date__lte=today, end_date__gte=today).prefetch_related('participants')) + shared_events(request.household, today, today)
+    today_events.sort(key=lambda event: (event.start_time.isoformat() if event.start_time else '', event.title))
+    quick_context['google_calendars'] = GoogleCalendar.objects.filter(connection__household=request.household, connection__owner__membership__active=True, connection__owner__membership__household=request.household).exclude(visibility='off').select_related('connection')
     if mode == 'month':
         previous = (first - timedelta(days=1)).replace(day=1)
         next_day = (first + timedelta(days=32)).replace(day=1)

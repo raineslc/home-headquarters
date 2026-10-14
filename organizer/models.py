@@ -104,3 +104,58 @@ class LunchPlan(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['child', 'date'], name='one_lunch_per_child_date')]
+
+class ParentInvitation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token_hash = models.CharField(max_length=64, unique=True)
+    email = models.EmailField()
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True)
+
+class GoogleConnection(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    subject = models.CharField(max_length=255)
+    email = models.EmailField()
+    encrypted_refresh_token = models.TextField()
+    needs_reconnect = models.BooleanField(default=False)
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['household', 'subject'], name='one_google_account_per_household')]
+
+class GoogleCalendar(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    connection = models.ForeignKey(GoogleConnection, on_delete=models.CASCADE, related_name='calendars')
+    external_id = models.CharField(max_length=1024)
+    name = models.CharField(max_length=255)
+    access_role = models.CharField(max_length=30)
+    visibility = models.CharField(max_length=10, choices=[('off', 'Not shared'), ('busy', 'Busy only'), ('details', 'Event details')], default='off')
+    color = models.CharField(max_length=12, default='blue')
+    last_synced = models.DateTimeField(null=True)
+    sync_error = models.CharField(max_length=255, blank=True)
+    window_start = models.DateField(null=True)
+    window_end = models.DateField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['connection', 'external_id'], name='one_calendar_per_connection')]
+
+class GoogleEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    calendar = models.ForeignKey(GoogleCalendar, on_delete=models.CASCADE, related_name='events')
+    external_id = models.CharField(max_length=1024)
+    title = models.CharField(max_length=500)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    start_time = models.TimeField(null=True)
+    end_time = models.TimeField(null=True)
+    all_day = models.BooleanField(default=False)
+    location = models.CharField(max_length=1000, blank=True)
+    html_link = models.URLField(max_length=2048, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['calendar', 'external_id'], name='one_event_per_calendar')]
+        ordering = ['start_date', 'start_time', 'title']
