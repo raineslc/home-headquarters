@@ -12,6 +12,11 @@ deploys during an incident. Goal: about $0/month for one household, with a budge
 | Deploys | GitHub Actions `deploy-cloud-run` job | Workload Identity Federation, main branch only; no stored keys |
 | Migrations | Cloud Run job `hhq-migrate` | Runs before each web deploy, so cold starts stay fast |
 
+The Google sign-in client moves to `home-headquarters-prod` (owner decision): a new web client
+with the Cloud Run redirect address, Calendar API enabled and the same scopes, including
+`calendar.app.created`. Google ties refresh tokens to the client that issued them, so each
+parent reconnects Google once on the new site; old connections show "Reconnect required".
+
 `GOOGLE_TOKEN_KEY` must be copied exactly from Render; it decrypts the stored Google refresh
 tokens. A new `DJANGO_SECRET_KEY` is generated, so everyone signs in once after the move.
 `BOOTSTRAP_TOKEN` and `OWNER_EMAIL` are not carried over: setup is already closed in the

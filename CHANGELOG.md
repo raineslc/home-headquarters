@@ -10,6 +10,9 @@ The containing Git commit identifies an entry; do not invent its own SHA before 
 - deploy/gcp-setup.sh failed for the owner with "service account does not exist" because new
   service accounts take up to a minute to appear in IAM. It now waits for them and retries
   permission grants quietly, showing Google's error only if retries are exhausted.
+- The Google sign-in client moves to the new Cloud Run project. Tokens issued to a different
+  client now show "Reconnect required" (unauthorized_client/invalid_client) instead of an
+  endless "temporarily unavailable". Test added; 96 organizer tests pass locally.
 
 ## 2026-10-14 — Preparing the move to Cloud Run + Neon
 
