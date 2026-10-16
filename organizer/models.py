@@ -132,6 +132,11 @@ class Task(models.Model):
         ordering = ['-high_priority', 'due_date', 'title']
         constraints = [models.UniqueConstraint(fields=['series_key', 'due_date'], name='one_task_per_series_date')]
 
+    @property
+    def checklist_progress(self):
+        items = list(self.checklist_items.values_list('done_at', flat=True))
+        return (sum(1 for done in items if done), len(items))
+
 class LunchPlan(models.Model):
     household = models.ForeignKey(Household, on_delete=models.CASCADE)
     child = models.ForeignKey(FamilyMember, on_delete=models.CASCADE)
@@ -251,3 +256,30 @@ class AssistantUsage(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['household', 'date'], name='one_ai_usage_per_household_day')]
+
+class ListTemplate(models.Model):
+    """A reusable checklist, such as "Swim bag", that can be added to activities and tasks."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    items = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+class ChecklistItem(models.Model):
+    """One line of a checklist on an activity or a task. On a repeating activity, done_dates holds
+    the occurrence dates (ISO) where it was ticked; otherwise done_at records the tick."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, null=True, blank=True, on_delete=models.CASCADE, related_name='checklist_items')
+    task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.CASCADE, related_name='checklist_items')
+    text = models.CharField(max_length=200)
+    position = models.PositiveIntegerField(default=0)
+    done_at = models.DateTimeField(null=True, blank=True)
+    done_dates = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ['position', 'text']
+        constraints = [models.CheckConstraint(condition=models.Q(activity__isnull=False, task__isnull=True) | models.Q(activity__isnull=True, task__isnull=False), name='checklist_item_has_one_owner')]

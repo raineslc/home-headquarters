@@ -11,12 +11,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from .models import Activity, FamilyMember, Household, LunchPlan, Task
+from .models import Activity, FamilyMember, Household, ListTemplate, LunchPlan, Task
 from .planner_forms import ActivityForm, BulkActivityForm, MemberForm, TaskForm, QuickActivityForm, QuickTaskForm, has_family_calendar
 from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
-from .recurrence import describe, end_before, first_on_or_after, household_events, next_date, occurrence_of
+from .recurrence import dates_between, describe, end_before, first_on_or_after, household_events, next_date, occurrence_of
+from .checklists import checklist_rows, copy_checklist
 
 TASK_FILTERS = [('all', 'All'), ('high', 'High priority'), ('week', 'Due in 7 days'), ('day', 'Due in 1 day')]
 
@@ -81,6 +82,27 @@ def quick_entry(request, task_page=False):
         return context, redirect(target)
     return context, None
 
+PREP_FROM_HOUR = 17
+
+def tonights_prep(request):
+    """After 5 PM: tomorrow's plans, due tasks, packed lunches and unticked checklist items (DASH-05)."""
+    zone = ZoneInfo(request.household.timezone)
+    now = timezone.localtime(timezone=zone)
+    if now.hour < PREP_FROM_HOUR:
+        return None
+    tomorrow = now.date() + timedelta(days=1)
+    events = household_events(request.household, tomorrow, tomorrow) + shared_events(request.household, tomorrow, tomorrow)
+    events.sort(key=lambda event: (event.start_time.isoformat() if event.start_time else '', event.title))
+    bring = []
+    for event in events:
+        owner = getattr(event, 'activity', event)
+        if isinstance(owner, Activity):
+            occurrence = tomorrow if owner.recurrence else None
+            bring += [row['item'].text for row in checklist_rows(owner, occurrence) if not row['done']]
+    tasks = list(Task.objects.filter(household=request.household, completed_at__isnull=True, due_date=tomorrow).select_related('assignee'))
+    packed = list(LunchPlan.objects.filter(household=request.household, date=tomorrow, choice='pack', child__archived=False).select_related('child'))
+    return {'day': tomorrow, 'events': events, 'tasks': tasks, 'packed': packed, 'bring': list(dict.fromkeys(bring))}
+
 def quick_assistant_plan(request):
     """This parent's latest assistant request, while it still has suggestions to add (or recently failed)."""
     from .models import AssistantPlan
@@ -100,6 +122,7 @@ def dashboard(request):
     quick_context['assistant_request_key'] = uuid.uuid4()
     quick_context['assistant_ready'] = bool(app_settings.OPENAI_API_KEY)
     quick_context['quick_plan'] = quick_assistant_plan(request)
+    quick_context['prep'] = tonights_prep(request)
     if response is not None:
         return response
     day = chosen_date(request)
@@ -161,8 +184,21 @@ def tasks(request):
 def activity_detail(request, pk):
     series = get_object_or_404(Activity.objects.prefetch_related('participants'), pk=pk, household=request.household)
     item = requested_occurrence(request, series)
+    occurrence = getattr(item, 'instance_date', None)
+    if series.recurrence and occurrence is None:
+        # Ticks on a repeating checklist belong to a date: use the next occurrence from today.
+        today = timezone.localdate(timezone=ZoneInfo(request.household.timezone))
+        upcoming = [day for day in dates_between(series.recurrence, series.start_date, today, today + timedelta(days=400))
+                    if day.isoformat() not in series.recurrence_exdates]
+        occurrence = upcoming[0] if upcoming else series.start_date
     return render(request, 'planner/activity.html', {'section': 'home', 'item': item, 'series': series, 'repeats': describe(series.recurrence, series.start_date),
-                                                     'occurrence': getattr(item, 'instance_date', None), 'tasks': series.tasks.select_related('assignee').all()})
+                                                     'occurrence': getattr(item, 'instance_date', None), 'tasks': series.tasks.select_related('assignee').all(),
+                                                     **checklist_context('activity', series, occurrence if series.recurrence else None)})
+
+def checklist_context(kind, owner, occurrence=None):
+    rows = checklist_rows(owner, occurrence)
+    return {'checklist': rows, 'checklist_done': sum(row['done'] for row in rows), 'checklist_kind': kind, 'checklist_owner': owner,
+            'checklist_occurrence': occurrence, 'list_templates': ListTemplate.objects.filter(household_id=owner.household_id)}
 
 def requested_occurrence(request, series):
     """The occurrence named by ?occurrence= (or a hidden POST field); the activity itself when none is named."""
@@ -188,11 +224,13 @@ def next_task(task):
     due = next_date(task.recurrence, task.recurrence_start, task.due_date)
     if due is None:
         return None
-    following, _ = Task.objects.get_or_create(series_key=task.series_key, due_date=due, defaults={
+    following, created = Task.objects.get_or_create(series_key=task.series_key, due_date=due, defaults={
         'household': task.household, 'title': task.title, 'high_priority': task.high_priority, 'assignee': task.assignee,
         'activity': task.activity, 'due_time': task.due_time, 'notes': task.notes, 'reminder_minutes': task.reminder_minutes,
         'search_prompt': task.search_prompt, 'search_questions': task.search_questions, 'recurrence': task.recurrence,
         'recurrence_start': task.recurrence_start})
+    if created:
+        copy_checklist(task, following)
     return following
 
 @parent_only
@@ -231,7 +269,8 @@ def edit(request, kind, pk=None):
             bump(household)
         messages.success(request, f'{label.capitalize()} saved.')
         return redirect('activity_detail', pk=item.pk) if kind == 'activity' else redirect('tasks' if kind == 'task' else 'family')
-    return render(request, 'planner/edit.html', {'section': 'family' if kind == 'member' else 'tasks' if kind == 'task' else 'home', 'form': form, 'label': label, 'item': instance, 'kind': kind, 'zone': request.household.timezone})
+    extra = checklist_context('task', instance) if kind == 'task' and instance else {}
+    return render(request, 'planner/edit.html', {'section': 'family' if kind == 'member' else 'tasks' if kind == 'task' else 'home', 'form': form, 'label': label, 'item': instance, 'kind': kind, 'zone': request.household.timezone, **extra})
 
 SCOPES = {'one': 'Only this occurrence', 'following': 'This and following occurrences', 'all': 'All occurrences'}
 

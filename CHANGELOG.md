@@ -4,6 +4,20 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Saved lists, checklists and Tonight's prep
+
+- Author: Claude Code. Tasks: LIST-01 (owner request), DASH-05; REC-01 export format.
+- Saved lists (Settings → Saved lists): reusable lists like "Swim bag" with up to 50 items.
+- Every activity and task page has a Checklist: add items or a whole saved list, tick, untick,
+  remove. Repeating activities keep ticks per date; a repeating task's next task gets a fresh
+  copy. Task rows show checklist progress.
+- Tonight's prep: after 5 PM the Overview shows tomorrow's plans, unticked items to bring, tasks
+  due tomorrow and packed lunches.
+- Exports are now version 4 and include saved lists and checklists; versions 2 and 3 still
+  restore (with no lists). The restore preview counts lists and checklist items.
+- Validation: 111 organizer tests (7 new, 3 updated) on local PostgreSQL; migration check clean;
+  phone-width check of the checklist and Saved lists pages on local test data.
+
 ## 2026-10-16 — Voice input for the assistant
 
 - Author: Claude Code. Task: AI-09 (owner request, free browser option).
