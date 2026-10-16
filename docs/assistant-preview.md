@@ -6,6 +6,8 @@ client JavaScript. `OPENAI_MODEL` is optional. The server sends the entered conv
 current draft edits, local date/time zone, and active family names/roles/IDs. Existing
 calendar entries are checked locally and are not sent to OpenAI. Requests set store=false.
 Both active parents can see household proposal history. Avoid sensitive details in prompts.
+Voice input (Speak button) uses the browser's own speech recognition; in Chrome, Google's
+speech service transcribes the audio. The app receives only the resulting text.
 
 Each request returns a strictly validated event/task proposal, including questions for
 missing details. It cannot execute organizer writes. Approval validates again using the

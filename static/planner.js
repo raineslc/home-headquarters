@@ -104,3 +104,70 @@ document.querySelectorAll('.proposal-review').forEach(form => {
   form.addEventListener('change', event => { if (event.target.matches('[data-proposal-pick]')) update(); });
   update();
 });
+// Voice input for the assistant (AI-09): Chrome's built-in speech recognition fills the text box.
+// Nothing is sent to the assistant until the parent presses the usual button. Hidden where unsupported.
+(() => {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const problems = {
+    'not-allowed': 'Microphone access is blocked. Allow it for this site in your browser settings, or type instead.',
+    'service-not-allowed': 'Voice input is turned off in this browser. You can type instead.',
+    'no-speech': 'Didn’t catch that. Tap Speak and try again.',
+    'audio-capture': 'No microphone was found.',
+    'network': 'Voice input needs an internet connection.',
+  };
+  document.querySelectorAll('[data-dictate-for]').forEach(box => {
+    const field = document.getElementById(box.dataset.dictateFor);
+    if (!Recognition || !field || field.disabled) return;
+    box.hidden = false;
+    const button = box.querySelector('button');
+    const label = box.querySelector('[data-mic-label]');
+    const status = box.querySelector('.mic-status');
+    const limit = Number(field.getAttribute('maxlength')) || 3000;
+    let recognition = null;
+    const finish = () => {
+      recognition = null;
+      box.classList.remove('listening');
+      button.setAttribute('aria-pressed', 'false');
+      label.textContent = 'Speak';
+    };
+    button.addEventListener('click', () => {
+      if (recognition) { recognition.stop(); return; }
+      const before = field.value.trim();
+      let spoken = '';
+      let failed = false;
+      recognition = new Recognition();
+      recognition.lang = navigator.language || 'en-US';
+      recognition.interimResults = true;
+      recognition.continuous = true;
+      recognition.onresult = event => {
+        let pending = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) spoken += result[0].transcript + ' '; else pending += result[0].transcript;
+        }
+        field.value = [before, (spoken + pending).trim()].filter(Boolean).join(' ').slice(0, limit);
+      };
+      recognition.onerror = event => {
+        failed = true;
+        status.textContent = problems[event.error] || (event.error === 'aborted' ? '' : 'Voice input stopped. You can type instead.');
+      };
+      recognition.onend = () => {
+        finish();
+        if (!failed) status.textContent = spoken.trim() ? 'Done. Check the text, then continue.' : '';
+        field.focus();
+      };
+      try {
+        recognition.start();
+      } catch (error) {
+        finish();
+        status.textContent = 'Voice input could not start. You can type instead.';
+        return;
+      }
+      box.classList.add('listening');
+      button.setAttribute('aria-pressed', 'true');
+      label.textContent = 'Stop';
+      status.textContent = 'Listening… speak, then tap Stop.';
+    });
+    if (field.form) field.form.addEventListener('submit', () => { if (recognition) recognition.stop(); });
+  });
+})();
