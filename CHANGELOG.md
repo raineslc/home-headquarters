@@ -13,6 +13,13 @@ The containing Git commit identifies an entry; do not invent its own SHA before 
   describe Cloud Run. The setup script checks each pasted value (one copy, no stray keys) and
   asks for the client secret of this project's own sign-in client.
 
+## 2026-10-16 — Google connect failures are diagnosable
+
+- Author: Claude Code. Task: FND-03 / GGL-01 (first Google connect on Cloud Run failed).
+- A failed Google sign-in callback now logs only the error type and Google's short error code
+  (for example invalid_client), never tokens, URL codes or provider responses. Test added;
+  97 organizer tests pass locally.
+
 ## 2026-10-14 — Setup script waits for new service accounts
 
 - Author: Claude Code. Task: FND-03.
