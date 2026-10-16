@@ -4,6 +4,13 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Google connect failures are diagnosable
+
+- Author: Claude Code. Task: FND-03 / GGL-01 (first Google connect on Cloud Run failed).
+- A failed Google sign-in callback now logs only the error type and Google's short error code
+  (for example invalid_client), never tokens, URL codes or provider responses. Test added;
+  97 organizer tests pass locally.
+
 ## 2026-10-14 — Setup script waits for new service accounts
 
 - Author: Claude Code. Task: FND-03.

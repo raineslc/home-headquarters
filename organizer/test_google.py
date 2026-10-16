@@ -172,3 +172,15 @@ class GoogleTests(TestCase):
             with self.assertRaises(google.GoogleUnavailable) as raised:
                 google.access_token(self.connection)
             self.assertNotIsInstance(raised.exception, google.ReconnectRequired)
+
+    def test_failed_connect_logs_only_the_error_code(self):
+        from oauthlib.oauth2.rfc6749.errors import InvalidClientError
+        self.client.post('/connections/google/connect/')
+        state = self.client.session['google_oauth']['state']
+        oauth = Mock()
+        oauth.fetch_token.side_effect = InvalidClientError(description='fixture-secret-detail')
+        with patch.object(google, 'flow', return_value=oauth), self.assertLogs('organizer.google', level='WARNING') as logs:
+            response = self.client.get('/connections/google/callback/', {'state': state, 'code': 'fixture-auth-code'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(logs.output, ['WARNING:organizer.google:Google connection failed: InvalidClientError invalid_client'])
+        self.assertNotIn('fixture', ' '.join(logs.output))
