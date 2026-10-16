@@ -4,6 +4,22 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Phone reminders
+
+- Author: Claude Code. Tasks: REM-01, REM-02, AI-05 (REM-03 real-phone check pending).
+- Settings → Phone reminders: turn reminders on for this phone, send a test, turn off; a device
+  list shows every parent device with reminders on.
+- Activities and tasks with a reminder (30 minutes, 1 hour, 1 day, 2 days) send a notification
+  to every device that turned reminders on. Tapping it opens the plan. Repeating activities
+  remind for each date; moved plans remind for the new time; deleted or completed ones don't.
+- Cloud Scheduler checks every 15 minutes from 6 AM to 11 PM Eastern (free allowance). One-time
+  setup: `bash deploy/reminders-setup.sh home-headquarters-prod` in Cloud Shell.
+- Deploys now update the service's secrets and settings instead of replacing them, so the
+  reminder key stays attached.
+- Validation: organizer tests on local PostgreSQL (11 new: RFC 8291 encryption vector, signed
+  VAPID token, push-service allowlist, due-window rules, once-per-device delivery, retries and
+  removed devices, scheduler token checks, household-scoped device management).
+
 ## 2026-10-16 — Saved lists, checklists and Tonight's prep
 
 - Author: Claude Code. Tasks: LIST-01 (owner request), DASH-05; REC-01 export format.

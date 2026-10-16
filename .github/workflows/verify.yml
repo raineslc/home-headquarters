@@ -64,5 +64,5 @@ jobs:
           gcloud run jobs execute hhq-migrate --region "$REGION" --wait --quiet
       - name: Deploy the web service
         run: |
-          gcloud run deploy home-headquarters --image "$IMAGE" --region "$REGION" --service-account "$RUNTIME_SA"             --allow-unauthenticated --min-instances 0 --max-instances 2 --memory 512Mi --cpu 1 --concurrency 20             --set-secrets "$SECRETS"             --set-env-vars "APP_HOSTNAME=${{ vars.APP_HOSTNAME }},APP_COMMIT=${{ github.sha }},APP_BRANCH=main,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }},GOOGLE_REDIRECT_URI=https://${{ vars.APP_HOSTNAME }}/connections/google/callback/,OPENAI_MODEL=gpt-5-mini"             --quiet
+          gcloud run deploy home-headquarters --image "$IMAGE" --region "$REGION" --service-account "$RUNTIME_SA"             --allow-unauthenticated --min-instances 0 --max-instances 2 --memory 512Mi --cpu 1 --concurrency 20             --update-secrets "$SECRETS"             --update-env-vars "APP_HOSTNAME=${{ vars.APP_HOSTNAME }},APP_COMMIT=${{ github.sha }},APP_BRANCH=main,GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }},GOOGLE_REDIRECT_URI=https://${{ vars.APP_HOSTNAME }}/connections/google/callback/,OPENAI_MODEL=gpt-5-mini"             --quiet
           curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "https://${{ vars.APP_HOSTNAME }}/health/"

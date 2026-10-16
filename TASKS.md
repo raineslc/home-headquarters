@@ -196,7 +196,9 @@ participation. No further approval is needed merely to develop reversible local 
   location stay blocked). Audio is handled by the browser (Chrome uses Google's speech service);
   the app never receives audio. Pending: real dictation check on the owner's Android phone.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
-  Saved reminder preferences are implemented but do not satisfy delivery acceptance.
+  **Implemented (Claude Code, October 16):** approved records keep their reminder choice and the
+  reminder job (REM-02) sends it; suggestions that are not approved are never reminded.
+  Pending REM-03 real-phone verification.
 
 ## 6. Overview and reliable reminders
 
@@ -219,10 +221,27 @@ participation. No further approval is needed merely to develop reversible local 
   "Bring:", tasks due tomorrow and packed lunches. Hidden before 5 PM.
 - [ ] REM-01 Choose a supported delivery channel and background schedule with owner-approved
   costs; document browser/device limitations and consent. Free web sleep is not a scheduler.
+  **Implemented, live setup pending (Claude Code, October 16; owner approved free Web Push and
+  Cloud Scheduler's free allowance).** Web Push (no new libraries; RFC 8291 test vector passes) to
+  every parent device that opts in on Settings → Phone reminders (Turn on, Send a test, Turn
+  off; device list with Remove). Cloud Scheduler job hhq-reminders every 15 minutes, 6 AM–11 PM
+  Eastern, authenticated with a Google-signed token for the permission-less hhq-scheduler
+  identity. Setup: deploy/reminders-setup.sh (docs/HOSTING.md). Limits: up to ~8 minutes early
+  or late; overnight reminders arrive at 6 AM if the plan hasn't started; untimed plans count
+  from 8 AM; titles/times/places pass encrypted through the browser's push service (Google for
+  Chrome); iPhones need the app added to the Home Screen (iOS 16.4+).
 - [ ] REM-02 Durable reminder jobs: time zones, configurable lead times, retry/backoff,
   deduplication, concurrent workers, cancellation/rescheduling on plan changes and revocation.
+  **Implemented (Claude Code):** reminders are recomputed from current plans each run (activity
+  time zone, repeating occurrences without skipped dates, changed occurrences, open tasks), so
+  edits/deletes/completions reschedule or cancel; ReminderDelivery is unique per device and
+  reminder key (key includes start time, so a moved plan reminds again); advisory lock for
+  concurrent runs; per-delivery commits; up to 3 attempts across runs; devices reported gone are
+  removed; delivery rows older than 14 days are pruned. Migration 0011. 11 isolated tests.
 - [ ] REM-03 Verify real delivery while app/browser closed, failure retry and no duplicates;
   do not mark done based on an in-app message or run_jobs heartbeat.
+  Pending: owner runs reminders-setup.sh, turns on reminders on an Android phone, and confirms a
+  test and a real scheduled reminder arrive with the app closed, once.
 
 ## 7. End-to-end release and handoff
 
@@ -252,16 +271,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: LIST-01 saved lists and checklists, DASH-05 Tonight's prep,
-  export version 4 (REC-01 format).
-- Starting canonical GitHub commit: `7f377cb` (merged PR 18); branch `list-01-checklists-prep`.
+- Assistant: Claude Code. Change: REM-01/REM-02/AI-05 phone reminders by Web Push with Cloud
+  Scheduler (owner skipped the weekly backup for now).
+- Starting canonical GitHub commit: `ce3bf50a54e69a092eee01f425ad18bf5ef3927a` (merged PR 19); branch `rem-01-push-reminders`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 111 organizer
-  tests passed (7 new), migration drift check clean; local phone-width check of a checklist and
-  Saved lists. CI status for the pushed branch is reported in the handoff.
-- Remaining blockers: hosted recovery drill, second-parent participation, reminder delivery.
-  Next (owner-approved plan): weekly automatic backup, phone push reminders, snap a flyer.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): organizer tests
+  passed (11 new), migration drift check clean, setup script syntax-checked; local Settings check.
+  CI status for the pushed branch is reported in the handoff.
+- Remaining blockers: owner runs deploy/reminders-setup.sh and verifies on a phone (REM-03);
+  hosted recovery drill; second-parent participation. Next: snap a flyer (AI-10).
 
 ## Deferred until first release works
 

@@ -171,3 +171,71 @@ document.querySelectorAll('.proposal-review').forEach(form => {
     if (field.form) field.form.addEventListener('submit', () => { if (recognition) recognition.stop(); });
   });
 })();
+
+// Phone reminders (Settings): subscribe this device to Web Push and send a test.
+(() => {
+  const card = document.querySelector('[data-push-key]');
+  if (!card || !card.dataset.pushKey) return;
+  const status = card.querySelector('[data-push-status]');
+  const buttons = {on: card.querySelector('[data-push-on]'), test: card.querySelector('[data-push-test]'), off: card.querySelector('[data-push-off]')};
+  const token = card.querySelector('input[name=csrfmiddlewaretoken]').value;
+  const say = text => { status.textContent = text; };
+  const show = subscribed => { buttons.on.hidden = subscribed; buttons.test.hidden = buttons.off.hidden = !subscribed; };
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    say('This browser can’t receive reminders. On Android, use Chrome or the installed app.');
+    return;
+  }
+  const post = (url, body) => fetch(url, {method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': token}, body: JSON.stringify(body)})
+    .then(response => response.json().catch(() => ({})).then(data => ({ok: response.ok, data})));
+  const key = () => {
+    const text = card.dataset.pushKey.replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(text + '='.repeat((4 - text.length % 4) % 4));
+    return Uint8Array.from(raw, character => character.charCodeAt(0));
+  };
+  // The service worker receives reminders; give up politely if this browser can't start it.
+  const ready = Promise.race([navigator.serviceWorker.ready,
+    new Promise((resolve, reject) => setTimeout(() => reject(new Error('timeout')), 8000))]);
+  const current = () => ready.then(registration => registration.pushManager.getSubscription().then(sub => ({registration, sub})));
+  if (Notification.permission === 'denied') {
+    say('Notifications are blocked for this site. Allow them in Chrome’s site settings, then reload.');
+    return;
+  }
+  current().then(({sub}) => {
+    if (sub) {
+      // Re-save in case the server lost it (for example after a restore of another device).
+      post('/push/subscribe/', sub.toJSON()).then(({ok}) => say(ok ? 'Reminders are on for this device.' : 'Reminders are on here, but the server didn’t confirm. Try turning them off and on.'));
+      show(true);
+    } else {
+      say('Reminders are off for this device.');
+      show(false);
+    }
+  }).catch(() => say('This browser couldn’t start the app’s background helper, so reminders can’t be turned on here. Reload, or use Chrome on your phone.'));
+  buttons.on.addEventListener('click', async () => {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') { say('Notifications weren’t allowed, so reminders stay off.'); return; }
+    say('Turning on…');
+    try {
+      const {registration} = await current();
+      const sub = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: key()});
+      const {ok, data} = await post('/push/subscribe/', sub.toJSON());
+      if (!ok) { await sub.unsubscribe(); say(data.error || 'The server couldn’t turn on reminders.'); return; }
+      say('Reminders are on for this device. Send a test to check.');
+      show(true);
+    } catch (error) {
+      say('This device couldn’t turn on reminders (' + error.name + ').');
+    }
+  });
+  buttons.test.addEventListener('click', async () => {
+    const {sub} = await current();
+    if (!sub) { show(false); return; }
+    const {ok, data} = await post('/push/test/', {endpoint: sub.endpoint});
+    say(ok ? 'Test sent. It should appear within a few seconds.' : (data.error || 'The test couldn’t be sent.'));
+  });
+  buttons.off.addEventListener('click', async () => {
+    const {sub} = await current();
+    if (sub) { await post('/push/unsubscribe/', {endpoint: sub.endpoint}); await sub.unsubscribe(); }
+    say('Reminders are off for this device.');
+    show(false);
+  });
+})();

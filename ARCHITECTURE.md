@@ -15,7 +15,14 @@ tests against disposable PostgreSQL 17 and a container build. On main, deploy-cl
 the image, runs migrate_locked as the Cloud Run job hhq-migrate (PostgreSQL advisory lock),
 deploys the service with Secret Manager secrets and checks /health/. See docs/HOSTING.md.
 Render (render.yaml) is retired and kept only until its database expires.
-run_jobs currently implements a locked/deduplicated heartbeat only; no real reminder queue.
+run_jobs is a locked heartbeat for housekeeping. Phone reminders (organizer/reminders.py) are
+Web Push: organizer/webpush.py encrypts (RFC 8291) and signs (VAPID, RFC 8292) with only
+`cryptography`; endpoints are limited to the major browsers' push services. Cloud Scheduler
+calls POST /jobs/reminders/ with a Google-signed identity token (audience and the
+JOB_INVOKER_EMAIL identity are checked). Each run recomputes due reminders from current plans
+(so edits, deletes and completions reschedule or cancel them), sends each once per device
+(ReminderDelivery unique on device + reminder key; key includes the start time), commits per
+delivery, retries failures up to 3 runs and removes devices the push service reports gone.
 
 ## Code map
 
@@ -146,5 +153,5 @@ IDs, remapping references and member IDs inside suggestion payloads. Household n
 accounts and connections are unchanged. Unknown authors fall back to the restoring parent.
 Version 1 notes-only exports still restore notes only. `manage.py export_household <file>`
 writes the same export for operators. A hosted isolated recovery drill is still pending.
-Source Git history and bundles cannot recover live household data. No scheduler, notification channel,
-closed-app delivery or Google write workflow exists yet.
+Source Git history and bundles cannot recover live household data. Phone reminders run from
+Cloud Scheduler (see above); scheduled Google sync while the app is closed does not exist yet.
