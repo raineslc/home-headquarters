@@ -9,6 +9,20 @@ set -euo pipefail
 echo "This Cloud Shell's public address (add it to Render's database access list): $(curl -s https://ifconfig.me)"
 read -r -s -p "Render EXTERNAL database URL (Render > database > Connect > External): " SRC; echo
 read -r -s -p "Neon DIRECT connection string (pooling off): " DST; echo
+
+check() {  # label, connection string: one URL, pasted once; shows only the host, never the password
+  local count rest host
+  count=$(printf '%s' "$2" | grep -o '://' | wc -l)
+  if [ "$count" -ne 1 ]; then
+    echo "The $1 string looks pasted $count times. Run the script again and paste it once."; exit 1
+  fi
+  case "$2" in postgres*://*) ;; *) echo "The $1 string should start with postgresql://"; exit 1 ;; esac
+  rest="${2#*@}"
+  host="${rest%%[/:?]*}"
+  echo "  $1 host: $host"
+}
+check "Render" "$SRC"
+check "Neon" "$DST"
 case "$DST" in *-pooler*) echo "Use Neon's direct (non-pooler) connection string."; exit 1 ;; esac
 
 TABLES="auth_user organizer_household organizer_membership organizer_familymember organizer_activity organizer_task organizer_lunchplan organizer_assistantplan organizer_assistantsuggestion organizer_googleconnection organizer_googlecalendar organizer_setuprecord organizer_recoverypoint django_migrations"
