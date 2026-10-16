@@ -4,6 +4,16 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Faster assistant review
+
+- Author: Claude Code. Task: AI-06 (owner request).
+- Suggestions show as one-line cards with a tick box (on by default), a summary and any missing
+  details. Edit details expands the form only when needed; reminder, search and repeat fields
+  are under More options. "Add N selected" adds ticked items together, activity first, so tasks
+  link to it; the "approve the activity first" error is gone. Unticked items stay pending.
+- Validation: 99 organizer tests (2 new) on local PostgreSQL; local walk-through of a birthday
+  plan (missing end time flagged, one task unticked, three items added and linked).
+
 ## 2026-10-16 — Switched to Cloud Run + Neon
 
 - Author: Claude Code. Tasks: FND-03, OPS-02.

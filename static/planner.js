@@ -92,3 +92,15 @@ if ('serviceWorker' in navigator) {
     document.querySelectorAll('[data-install-banner], [data-install-ready]').forEach(item => { item.hidden = true; });
   });
 })();
+// Assistant review: keep the Add selected button's count in step with the ticked suggestions.
+document.querySelectorAll('.proposal-review').forEach(form => {
+  const button = form.querySelector('[data-add-selected]');
+  if (!button) return;
+  const update = () => {
+    const count = form.querySelectorAll('[data-proposal-pick]:checked').length;
+    button.textContent = count ? `Add ${count} selected` : 'Add selected';
+    button.disabled = count === 0;
+  };
+  form.addEventListener('change', event => { if (event.target.matches('[data-proposal-pick]')) update(); });
+  update();
+});

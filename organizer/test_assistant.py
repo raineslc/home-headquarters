@@ -72,7 +72,7 @@ class AssistantTests(TestCase):
         url = f'/assistant/{plan.pk}/'
         event = plan.suggestions.get(kind='event')
         task = plan.suggestions.filter(kind='task').first()
-        self.assertContains(self.client.post(url, self.post_data(plan, f'approve:{task.pk}')), 'Approve or dismiss the event first')
+        self.assertContains(self.client.post(url, self.post_data(plan, f'approve:{task.pk}')), 'Tick the activity too and use Add selected')
         data = self.post_data(plan, f'save:{task.pk}')
         data[f'{task.pk}-title'] = 'Pick a book'
         self.assertEqual(self.client.post(url, data).status_code, 302)
@@ -147,3 +147,47 @@ class AssistantTests(TestCase):
         task.household = self.other
         task.save()
         self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_add_selected_links_tasks_and_leaves_unticked_items_pending(self):
+        plan = self.draft()
+        page = self.client.get(f'/assistant/{plan.pk}/')
+        self.assertContains(page, 'Sat, Oct 17 · 2:00 PM–4:00 PM · Logan')
+        self.assertContains(page, 'Due Fri, Oct 16 · Household')
+        self.assertContains(page, 'Add selected')
+        self.assertNotContains(page, 'Needs:')
+        event = plan.suggestions.get(kind='event')
+        buy, wrap, address = plan.suggestions.filter(kind='task').order_by('position')
+        data = self.post_data(plan, 'approve_selected')
+        data['selected'] = [str(buy.pk), str(event.pk)]  # task listed first: the activity is still added first
+        response = self.client.post(f'/assistant/{plan.pk}/', data)
+        self.assertEqual(response.status_code, 302)
+        activity = Activity.objects.get()
+        self.assertEqual(list(Task.objects.values_list('title', 'activity')), [('Buy a gift', activity.pk)])
+        statuses = dict(plan.suggestions.values_list('pk', 'status'))
+        self.assertEqual((statuses[event.pk], statuses[buy.pk], statuses[wrap.pk], statuses[address.pk]), ('approved', 'approved', 'pending', 'pending'))
+        # The remaining tasks can be added later and link to the activity added earlier.
+        plan.refresh_from_db()
+        data = self.post_data(plan, 'approve_selected')
+        data['selected'] = [str(wrap.pk)]
+        self.client.post(f'/assistant/{plan.pk}/', data)
+        self.assertEqual(Task.objects.get(title='Wrap the gift').activity, activity)
+        page = self.client.get(f'/assistant/{plan.pk}/')
+        self.assertNotContains(page, 'Nothing has been added yet')
+        self.assertNotContains(page, 'Details to confirm')
+
+    def test_add_selected_needs_a_choice_and_shows_missing_details(self):
+        proposal = copy.deepcopy(self.proposal)
+        proposal['event']['end_time'] = None
+        plan = self.draft(proposal)
+        page = self.client.get(f'/assistant/{plan.pk}/')
+        self.assertContains(page, 'Needs: end time')
+        self.assertContains(page, '<details class="proposal-edit" open>', html=False)
+        data = self.post_data(plan, 'approve_selected')
+        response = self.client.post(f'/assistant/{plan.pk}/', data, follow=True)
+        self.assertContains(response, 'Tick at least one suggestion to add.')
+        data['selected'] = [str(plan.suggestions.get(kind='event').pk)]
+        response = self.client.post(f'/assistant/{plan.pk}/', data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Choose a time')
+        self.assertFalse(Activity.objects.exists())
+
