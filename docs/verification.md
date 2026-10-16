@@ -132,3 +132,9 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Eleven isolated PostgreSQL tests: due window (not before ~8 minutes ahead, not after the start, overnight catch-up), repeating occurrences and skipped dates, timed/untimed/completed tasks, once per device across runs, a moved plan reminded again, a deleted plan not reminded, retries stop at 3, gone devices removed, scheduler token audience/identity checks, subscribe validation and household scoping, service worker push handlers.
 - Local end-to-end in headless Edge with a throwaway local key: Settings showed "Reminders are off", Turn on subscribed through Microsoft's push service (wns2-ch1p.notify.windows.com), the server stored it, Send a test was accepted by the real push service (encryption and VAPID signature accepted), and Turn off removed it. The Claude desktop browser pane cannot run service workers, so the card now stops waiting after 8 seconds with an explanation.
 - Not yet verified: real delivery to a phone with the app closed (REM-03) and the hosted scheduler run; both need the owner's setup.
+
+## Snap a flyer (AI-10), October 16, 2026 — Claude Code
+
+- Five isolated PostgreSQL tests: a JPEG from the Overview reaches the provider as a data URL and the saved plan holds no image data; note plus PNG; HEIC, text and oversized files and empty requests are refused before any AI call; the Responses API body carries input_text plus input_image with store false and the image-as-data instruction; both pages offer the camera button. 127 organizer tests passed.
+- Local phone-width (375px) check: the button sits under Speak; a 4000×3000 PNG (300 KB) chosen in the browser became flyer.jpg, 36 KB, 1600 px wide before upload; no sideways scroll.
+- Not yet verified: a real flyer read by the live model (needs the hosted API key and credit).

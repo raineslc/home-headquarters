@@ -195,6 +195,14 @@ participation. No further approval is needed merely to develop reversible local 
   missing microphones. Permissions-Policy now allows the microphone for this site only (camera and
   location stay blocked). Audio is handled by the browser (Chrome uses Google's speech service);
   the app never receives audio. Pending: real dictation check on the owner's Android phone.
+- [ ] AI-10 Snap a flyer (owner request, Claude Code, October 16): a "Snap a flyer" button on the
+  Overview assistant tile and Assistant page opens the phone camera (or photo picker). The phone
+  shrinks the photo (up to 1600 px JPEG) before upload; the server accepts only JPEG/PNG/WebP by
+  file signature (8 MB cap), sends it once to OpenAI with the request (store: false) and never
+  saves it; the plan keeps only a note that a photo was read. A note is optional. Instructions
+  treat text in the image as data only, ask about unreadable details, and turn RSVP/payment/form
+  deadlines into tasks. Results are normal suggestions for review. Pending: live check with a
+  real flyer and the owner's API key (images use more API credit than text).
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   **Implemented (Claude Code, October 16):** approved records keep their reminder choice and the
   reminder job (REM-02) sends it; suggestions that are not approved are never reminded.
@@ -271,16 +279,15 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: REM-01/REM-02/AI-05 phone reminders by Web Push with Cloud
-  Scheduler (owner skipped the weekly backup for now).
-- Starting canonical GitHub commit: `ce3bf50a54e69a092eee01f425ad18bf5ef3927a` (merged PR 19); branch `rem-01-push-reminders`.
+- Assistant: Claude Code. Change: AI-10 snap a flyer (stacked on REM-01 phone reminders, PR 20).
+- Starting canonical GitHub commit: `67a12ebe56426b943f3255708c06bbcf4907324e` (branch rem-01-push-reminders, PR 20); branch `ai-10-snap-a-flyer`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): organizer tests
-  passed (11 new), migration drift check clean, setup script syntax-checked; local Settings check.
-  CI status for the pushed branch is reported in the handoff.
-- Remaining blockers: owner runs deploy/reminders-setup.sh and verifies on a phone (REM-03);
-  hosted recovery drill; second-parent participation. Next: snap a flyer (AI-10).
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 127 organizer
+  tests passed (5 new), migration drift check clean; phone-width check of the Overview tile and
+  on-phone photo shrinking. CI status for the pushed branch is reported in the handoff.
+- Remaining blockers: owner runs deploy/reminders-setup.sh and verifies a phone reminder
+  (REM-03); live flyer check; hosted recovery drill; second-parent participation.
 
 ## Deferred until first release works
 

@@ -239,3 +239,28 @@ document.querySelectorAll('.proposal-review').forEach(form => {
     show(false);
   });
 })();
+
+// Snap a flyer (AI-10): shrink the photo on the phone before upload; it is never stored.
+document.querySelectorAll('input[data-flyer]').forEach(input => {
+  const status = input.closest('.flyer').querySelector('[data-flyer-status]');
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) { status.textContent = ''; return; }
+    status.textContent = 'Getting the photo ready…';
+    try {
+      const bitmap = await createImageBitmap(file, {imageOrientation: 'from-image'});
+      const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      if (blob && (blob.size < file.size || !/^image\/(jpeg|png|webp)$/.test(file.type))) {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([blob], 'flyer.jpg', {type: 'image/jpeg'}));
+        input.files = transfer.files;
+      }
+    } catch (error) { /* send the original; the server checks it */ }
+    status.textContent = 'Photo added. Add a note if you like, then tap Prepare suggestions.';
+  });
+});

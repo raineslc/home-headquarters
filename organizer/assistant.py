@@ -28,11 +28,11 @@ def reserve_usage(household):
     usage.save(update_fields=['attempts'])
     return True
 
-def generate(plan):
+def generate(plan, image=None):
     generation_version = plan.version
     drafts = list(plan.suggestions.filter(revision=plan.revision).values('kind', 'status', 'payload'))
     try:
-        result = propose(plan.household, plan.messages, drafts)
+        result = propose(plan.household, plan.messages, drafts, image=image) if image else propose(plan.household, plan.messages, drafts)
     except AssistantUnavailable as error:
         AssistantPlan.objects.filter(pk=plan.pk, version=generation_version).update(status='error', error=str(error), updated_at=timezone.now())
         return
@@ -53,10 +53,12 @@ def generate(plan):
         locked.version += 1
         locked.save()
 
+PHOTO_NOTE = '[A photo of a flyer was attached and read once; it was not kept.]'
+
 @parent_only
 @require_http_methods(['GET', 'POST'])
 def index(request):
-    form = PromptForm(request.POST or None, initial={'request_key': uuid.uuid4()})
+    form = PromptForm(request.POST or None, request.FILES or None, initial={'request_key': uuid.uuid4()})
     if request.method == 'POST' and form.is_valid():
         key = form.cleaned_data['request_key']
         existing = AssistantPlan.objects.filter(request_key=key).first()
@@ -77,11 +79,13 @@ def index(request):
                 if not reserve_usage(household):
                     form.add_error(None, 'The household has reached its 30-request daily preview limit. Try tomorrow.')
                 else:
-                    prompt = form.cleaned_data['prompt']
+                    prompt, image = form.cleaned_data['prompt'].strip(), form.cleaned_data['photo']
+                    # Only a note that a photo was read is kept; the image itself is never stored.
+                    text = (prompt + ' ' if prompt else 'Plan from this flyer. ') + PHOTO_NOTE if image else prompt
                     plan = AssistantPlan.objects.create(household=household, created_by=request.user, request_key=key,
-                        title=prompt[:200], messages=[{'role': 'user', 'text': prompt}])
+                        title=(prompt or 'Flyer photo')[:200], messages=[{'role': 'user', 'text': text}])
             if not form.errors:
-                generate(plan)
+                generate(plan, image)
                 if request.POST.get('origin') == 'home':
                     return redirect(reverse('home') + '#assistant')
                 return redirect('assistant_plan', pk=plan.pk)
