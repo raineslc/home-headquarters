@@ -288,7 +288,7 @@ class RecurrenceRecoveryTests(TestCase):
 
     def test_series_overrides_and_repeating_tasks_round_trip_into_a_separate_household(self):
         exported = snapshot(self.house)
-        self.assertEqual(exported['version'], 3)
+        self.assertEqual(exported['version'], 4)
         self.restore(self.outsider, exported)
         series = Activity.objects.get(household=self.other, series__isnull=True)
         override = Activity.objects.get(household=self.other, series__isnull=False)
@@ -304,9 +304,10 @@ class RecurrenceRecoveryTests(TestCase):
     def test_version_two_exports_still_restore(self):
         exported = snapshot(self.house)
         exported['version'] = 2
-        exported['activities'] = [{k: v for k, v in row.items() if k not in ('recurrence', 'recurrence_exdates', 'series', 'occurrence_date')}
+        del exported['list_templates']
+        exported['activities'] = [{k: v for k, v in row.items() if k not in ('recurrence', 'recurrence_exdates', 'series', 'occurrence_date', 'checklist')}
                                   for row in exported['activities'] if row['series'] is None]
-        exported['tasks'] = [{k: v for k, v in row.items() if k not in ('recurrence', 'recurrence_start', 'series_key')} for row in exported['tasks']]
+        exported['tasks'] = [{k: v for k, v in row.items() if k not in ('recurrence', 'recurrence_start', 'series_key', 'checklist')} for row in exported['tasks']]
         self.restore(self.outsider, exported)
         self.assertEqual(Activity.objects.get(household=self.other).recurrence, '')
         self.assertEqual(Task.objects.get(household=self.other).recurrence, '')

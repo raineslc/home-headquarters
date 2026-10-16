@@ -107,6 +107,13 @@ participation. No further approval is needed merely to develop reversible local 
   stop. Changing the rule starts a new series. Only the current task exists; future ones are not shown.
 - [x] UX-01 Inline quick Add activity/Add task on Overview; high-priority tasks sort first.
   PostgreSQL CI 38462765334; deployed preview.
+- [x] LIST-01 Saved lists and checklists (owner request, Claude Code, October 16). Settings →
+  Saved lists holds reusable lists (name plus up to 50 items, one per line). Any activity or task
+  page has a Checklist: add items, add a saved list (items already there are skipped), tick,
+  untick and remove. On a repeating activity the items are shared and ticks are kept per date
+  (the page shows the chosen or next date); a repeating task's next task gets a fresh unticked
+  copy, created once. Task rows show "☑ done/total". Editing or deleting a saved list never
+  changes checklists already added. Migration 0010; export version 4 includes both.
 
 ## 4. Google Calendar and school lunches (required first release)
 
@@ -207,6 +214,9 @@ participation. No further approval is needed merely to develop reversible local 
   Due in 7 days and Due in 1 day (today or tomorrow). Due filters include overdue tasks; counts
   show on each filter. Server-side links work without JavaScript. Replaces the previous
   eight-task weekly list. Isolated PostgreSQL test and local visual check.
+- [x] DASH-05 Tonight's prep (Claude Code, October 16): from 5 PM household time the Overview
+  shows a card for tomorrow with its plans (local and shared Google), unticked checklist items as
+  "Bring:", tasks due tomorrow and packed lunches. Hidden before 5 PM.
 - [ ] REM-01 Choose a supported delivery channel and background schedule with owner-approved
   costs; document browser/device limitations and consent. Free web sleep is not a scheduler.
 - [ ] REM-02 Durable reminder jobs: time zones, configurable lead times, retry/backoff,
@@ -242,16 +252,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: FND-03 cutover cleanup (Cloud Run is the only deploy target;
-  docs updated; setup script input checks). Hosting moved October 16.
-- Starting canonical GitHub commit: `f28fc59206fb6d6b529e45fe731afaad51c34e23` (merged PR 11); branch `fnd-03-cutover-cleanup`.
+- Assistant: Claude Code. Change: LIST-01 saved lists and checklists, DASH-05 Tonight's prep,
+  export version 4 (REC-01 format).
+- Starting canonical GitHub commit: `7f377cb` (merged PR 18); branch `list-01-checklists-prep`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): organizer tests,
-  deploy check and migration drift check passed; workflow YAML parsed; scripts syntax-checked.
-  CI status for the pushed branches is reported in the handoff.
-- Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, reminder delivery. Next: backup routine, Android install, AI suggestion streamlining, GGL-02 family calendar.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 111 organizer
+  tests passed (7 new), migration drift check clean; local phone-width check of a checklist and
+  Saved lists. CI status for the pushed branch is reported in the handoff.
+- Remaining blockers: hosted recovery drill, second-parent participation, reminder delivery.
+  Next (owner-approved plan): weekly automatic backup, phone push reminders, snap a flyer.
 
 ## Deferred until first release works
 

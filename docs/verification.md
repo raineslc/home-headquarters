@@ -120,3 +120,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Two new tests: Add selected adds the ticked activity before its task and links them, leaves unticked tasks pending, links a later-added task to the earlier activity, hides stale reply/questions; an empty selection is refused and a missing end time is flagged and blocks adding.
 - Local walk-through on test data: the card summary read "Sat, Oct 24 · 2:00 PM · Sam Child" with "Needs: end time" and Edit opened; unticking a task changed the button to "Add 3 selected"; three items were added and both tasks linked to the activity.
 
+## Saved lists, checklists and Tonight's prep (LIST-01, DASH-05), October 16, 2026 — Claude Code
+
+- Seven new isolated PostgreSQL tests: saved list create/edit/delete and 50-item limit; add, saved-list add with duplicate skipping, tick/untick/remove and safe redirects on a one-off activity; per-date ticks on a repeating activity; other households cannot read or change lists or checklists; task progress and a single fresh copy for the next repeating task; Tonight's prep hidden at 4:59 PM and shown at 5:30 PM with unticked items only; a version 3 export restores without lists.
+- Recovery tests now include checklists and a saved list in the full round trip into a separate household, plus eight invalid-checklist/list cases. 111 organizer tests passed; makemigrations --check clean.
+- Local phone-width (375px) check: an activity checklist ticked through the real form (1/5 → 2/5), and Saved lists page, no sideways scroll. Tonight's prep was checked by test only (local time was before 5 PM).

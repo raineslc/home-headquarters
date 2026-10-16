@@ -10,8 +10,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command, CommandError
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
-from .models import (Activity, AssistantPlan, AssistantSuggestion, FamilyMember, GoogleConnection, Household, LunchPlan,
-                     Membership, ParentInvitation, PendingRestore, RecoveryPoint, SetupRecord, Task)
+from .models import (Activity, AssistantPlan, AssistantSuggestion, ChecklistItem, FamilyMember, GoogleConnection, Household,
+                     ListTemplate, LunchPlan, Membership, ParentInvitation, PendingRestore, RecoveryPoint, SetupRecord, Task)
 from .recovery import snapshot, validate_household
 
 def canonical(data):
@@ -43,7 +43,7 @@ def canonical(data):
                 payload['participants'] = sorted(members[x] for x in payload['participants'])
             if payload.get('assignee'):
                 payload['assignee'] = members[payload['assignee']]
-    for name in ('members', 'activities', 'tasks', 'lunches'):
+    for name in ('members', 'activities', 'tasks', 'lunches', 'list_templates'):
         result[name].sort(key=lambda row: json.dumps(row, sort_keys=True))
     return result
 
@@ -77,6 +77,10 @@ class HouseholdRecoveryTests(TestCase):
                                         due_time='18:00', high_priority=True, reminder_minutes=1440, search_prompt='Gift for a 7 year old',
                                         search_questions='Budget?', completed_at=timezone.now())
         Task.objects.create(household=house, title='Household chore', notes='No assignee or activity')
+        ChecklistItem.objects.create(household=house, activity=self.party, text='Card', position=0, done_at=timezone.now())
+        ChecklistItem.objects.create(household=house, activity=self.party, text='Sunscreen', position=1, done_dates=['2026-10-17'])
+        ChecklistItem.objects.create(household=house, task=self.gift, text='Wrapping paper', position=0)
+        ListTemplate.objects.create(household=house, name='Swim bag', items=['Towel', 'Goggles'])
         LunchPlan.objects.create(household=house, child=self.child, date='2026-10-14', choice='pack')
         LunchPlan.objects.create(household=house, child=self.archived, date='2026-10-15', choice='school')
         SetupRecord.objects.create(household=house, title='Deployment note')
@@ -123,6 +127,7 @@ class HouseholdRecoveryTests(TestCase):
         outsider.force_login(self.outsider)
         preview = self.preview(exported, outsider)
         self.assertContains(preview, '3 family members')
+        self.assertContains(preview, '1 saved list and 3 checklist items')
         self.assertContains(preview, 'Time zone differs')
         self.assertEqual(self.apply(outsider).status_code, 302)
         restored = snapshot(self.other)
@@ -175,6 +180,8 @@ class HouseholdRecoveryTests(TestCase):
         good = snapshot(self.house)
         member, child = good['members'][0]['id'], next(r['id'] for r in good['members'] if r['role'] == 'child')
         parent_member = next(r['id'] for r in good['members'] if r['role'] == 'parent')
+        party = next(i for i, r in enumerate(good['activities']) if r['title'] == 'Party')
+        gift = next(i for i, r in enumerate(good['tasks']) if r['title'] == 'Buy a gift')
         def mutate(path, value):
             def change(data):
                 target = data
@@ -200,7 +207,15 @@ class HouseholdRecoveryTests(TestCase):
             mutate(['assistant_plans', 0, 'suggestions', 0, 'task'], str(uuid.uuid4())),
             mutate(['assistant_plans', 0, 'suggestions', 0, 'kind'], 'email'),
             mutate(['notes'], [{'title': ''}]),
-            mutate(['version'], 4),
+            mutate(['version'], 5),
+            mutate(['list_templates', 0, 'items'], []),
+            mutate(['list_templates', 0, 'name'], ''),
+            mutate(['activities', party, 'checklist', 0, 'text'], ''),
+            mutate(['activities', party, 'checklist', 0, 'done_dates'], ['2026-02-30']),
+            mutate(['activities', party, 'checklist', 0, 'done_at'], '2026-10-17T10:00:00'),
+            mutate(['activities', party, 'checklist', 0, 'secret'], 'unexpected'),
+            mutate(['activities', party, 'checklist'], [{'text': 'x', 'position': i, 'done_at': None, 'done_dates': []} for i in range(51)]),
+            mutate(['tasks', gift, 'checklist', 0, 'position'], True),
             mutate(['scope'], 'foundation'),
             mutate(['household', 'timezone'], 'Nowhere'),
         ]
@@ -253,7 +268,7 @@ class HouseholdRecoveryTests(TestCase):
         self.apply()
         self.assertEqual(list(SetupRecord.objects.filter(household=self.house).values_list('title', flat=True)), ['Old note'])
         self.assertEqual(Task.objects.filter(household=self.house).count(), 2)
-        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 3)
+        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 4)
 
     def test_export_household_command(self):
         with tempfile.TemporaryDirectory() as folder:
