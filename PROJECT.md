@@ -34,6 +34,7 @@ requirements, not optional polish.
   Due in 1 day), compact inline Add activity/Add task, assistant input.
 - "Add on several dates" adds one activity on many chosen dates after a review step.
 - Agenda is a rolling seven-day Upcoming list of events and due tasks with an Overdue list.
+- The default calendar is a rolling five weeks starting this week; Week view shows fuller details.
 - Google writes (owner decision, October 14, 2026): the app creates its own "Home Headquarters"
   calendar with the narrowest scope (calendar.app.created) and never changes other calendars.
   Each activity chooses whether it is added (on by default once set up). The app is the source

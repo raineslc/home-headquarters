@@ -69,12 +69,12 @@ class RecurringActivityTests(TestCase):
     def test_create_series_and_show_occurrences_in_week_month_and_agenda(self):
         series = self.create_series()
         self.assertEqual(series.recurrence, 'FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261130')
-        week = self.client.get('/?date=2026-10-14')
+        week = self.client.get('/?view=week&date=2026-10-14')
         days = [cell['date'] for cell in week.context['cells'] if any(e.title == 'Practice' for e in cell['events'])]
         self.assertEqual(days, [date(2026, 10, 12), date(2026, 10, 14)])
         self.assertContains(week, f'/activity/{series.pk}/?occurrence=2026-10-14')
         month = self.client.get('/?view=month&date=2026-11-01')
-        self.assertEqual(sum(1 for cell in month.context['cells'] for e in cell['events'] if e.title == 'Practice'), 11)
+        self.assertEqual(sum(1 for cell in month.context['cells'] for e in cell['events'] if e.title == 'Practice'), 10)  # rolling five weeks: Oct 26 - Nov 29
         self.assertEqual(self.titles_on(date(2026, 12, 2)), [])
         detail = self.client.get(f'/activity/{series.pk}/?occurrence=2026-10-21')
         self.assertContains(detail, 'Wednesday, October 21, 2026')
@@ -96,7 +96,7 @@ class RecurringActivityTests(TestCase):
                            weekdays=['FR'], ends='never', until='')
         self.assertEqual(self.titles_on(date(2026, 10, 11)), ['Weekend camp'])
         self.assertEqual(self.titles_on(date(2026, 10, 12)), [])
-        week = self.client.get('/?date=2026-10-12')  # Monday after a weekend occurrence
+        week = self.client.get('/?view=week&date=2026-10-12')  # Monday after a weekend occurrence
         self.assertEqual([c['date'].day for c in week.context['cells'] if c['events']], [16, 17, 18])
 
     def test_edit_only_this_occurrence(self):

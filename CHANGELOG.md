@@ -4,6 +4,16 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Rolling five-week calendar and roomier week view
+
+- Author: Claude Code. Task: CAL-04 (owner request).
+- The Overview opens on a rolling five weeks: the current week on top, then the next four, with
+  month labels where months change; arrows move four weeks and "This week" returns. This
+  replaces the calendar-month grid.
+- Week view: taller day tiles with time ranges, locations, and task time, person and activity.
+- Validation: 103 organizer tests (1 new, 3 updated for the new default) on local PostgreSQL;
+  desktop check of both views on a local test database.
+
 ## 2026-10-16 — Quick approval on the Overview
 
 - Author: Claude Code. Task: AI-08 (owner request).

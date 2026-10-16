@@ -94,6 +94,11 @@ participation. No further approval is needed merely to develop reversible local 
   clock-change times and other plans that day. All dates are created in one transaction or none;
   a batch ID (migration 0008) makes a repeated submit add nothing. Each date is a one-off activity.
   Limits: single-day activities only; batch is an idempotency key and is not exported.
+- [x] CAL-04 Rolling calendar (owner request, Claude Code, October 16): the default Overview view
+  is five weeks starting with the current week (today on the top row), with month labels at the
+  first day and each 1st, earlier days lightly shaded, and arrows moving four weeks. It replaces
+  the calendar-month grid. Week view tiles are taller and show time ranges, locations and task
+  details (time, person, linked activity). Phones keep the stacked week and compact month.
 - [x] TSK-01 Task CRUD, complete/reopen timestamp, member/household assignment, due date/time,
   linked activity and visible preparation tasks; stale-edit checks.
 - [x] TSK-02 Recurring tasks and completion/next-occurrence semantics; no duplicate generation
