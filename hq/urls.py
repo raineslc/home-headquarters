@@ -6,6 +6,7 @@ from organizer import connections, invitations
 from organizer import assistant
 from organizer import pwa
 from organizer import checklists
+from organizer import reminders
 
 urlpatterns = [
     path('assistant/', assistant.index, name='assistant'),
@@ -42,6 +43,11 @@ urlpatterns = [
     path('activity/<uuid:pk>/', planner.activity_detail, name='activity_detail'),
     path('checklist/<str:kind>/<uuid:pk>/', checklists.checklist_action, name='checklist_action'),
     path('lists/', checklists.lists, name='lists'),
+    path('push/subscribe/', reminders.subscribe, name='push_subscribe'),
+    path('push/unsubscribe/', reminders.unsubscribe, name='push_unsubscribe'),
+    path('push/test/', reminders.test_push, name='push_test'),
+    path('push/devices/<uuid:pk>/remove/', reminders.remove_device, name='push_remove'),
+    path('jobs/reminders/', reminders.reminders_job, name='reminders_job'),
     path('lists/<uuid:pk>/', checklists.list_edit, name='list_edit'),
     path('plan/activity/bulk/', planner.bulk_activity, name='bulk_activity'),
     path('plan/<str:kind>/new/', planner.edit, name='plan_new'),

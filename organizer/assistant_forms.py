@@ -22,7 +22,7 @@ class EventDraftForm(forms.Form):
     participants = forms.ModelMultipleChoiceField(queryset=FamilyMember.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     location = forms.CharField(max_length=300, required=False)
     notes = forms.CharField(max_length=5000, required=False, widget=forms.Textarea(attrs={'rows': 2}))
-    reminder_minutes = forms.TypedChoiceField(choices=REMINDERS, required=False, coerce=int, empty_value=None, label='Reminder preference (delivery not enabled)')
+    reminder_minutes = forms.TypedChoiceField(choices=REMINDERS, required=False, coerce=int, empty_value=None, label='Phone reminder')
 
     def __init__(self, *args, household, **kwargs):
         super().__init__(*args, **kwargs)
@@ -36,7 +36,7 @@ class TaskDraftForm(forms.Form):
     due_time = forms.TimeField(required=False, widget=forms.TimeInput(attrs={'type': 'time'}))
     high_priority = forms.BooleanField(required=False)
     notes = forms.CharField(max_length=5000, required=False, widget=forms.Textarea(attrs={'rows': 2}))
-    reminder_minutes = forms.TypedChoiceField(choices=REMINDERS, required=False, coerce=int, empty_value=None, label='Reminder preference (delivery not enabled)')
+    reminder_minutes = forms.TypedChoiceField(choices=REMINDERS, required=False, coerce=int, empty_value=None, label='Phone reminder')
     search_prompt = forms.CharField(max_length=500, required=False, widget=forms.Textarea(attrs={'rows': 2}), label='Optional external search prompt')
     search_questions = forms.CharField(max_length=500, required=False, label='Details to check before searching')
 

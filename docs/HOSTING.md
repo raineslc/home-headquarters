@@ -45,11 +45,30 @@ database (QA-04).
 6. **Cutover:** stop making changes on Render, run `copy-database.sh` again for a final copy,
    check again, then use the new address. Keep Render until November 11 as a read-only fallback.
 
+## Phone reminders (REM-01)
+
+1. In Cloud Shell, upload `deploy/reminders-setup.sh` and run `bash reminders-setup.sh home-headquarters-prod`.
+   It generates the Web Push key straight into Secret Manager (`hhq-web-push-key`; never
+   shown), creates the permission-less `hhq-scheduler` identity, connects both to the app and
+   creates the Cloud Scheduler job `hhq-reminders` (every 15 minutes, 6 AM–11 PM Eastern), then
+   runs it once. Re-running keeps the existing key (a new key would switch off every phone).
+2. On each phone: Settings → Phone reminders → Turn on reminders on this device → Send a test.
+3. The scheduler calls `POST /jobs/reminders/` with a Google-signed identity token; the app
+   accepts only the `hhq-scheduler` identity for exactly that address. Change the times with
+   `SCHEDULE="*/20 6-22 * * *" bash reminders-setup.sh home-headquarters-prod`.
+4. The deploy job updates (rather than replaces) the service's secrets and settings, so the
+   reminder key and scheduler identity stay attached across deploys.
+
 ## Costs to watch
 
 Cloud Run, Secret Manager and Artifact Registry have monthly free allowances that one family
 should stay well inside; Neon's free plan has no expiry. Prices and allowances change, so the
 budget alert is the safety net. Any paid upgrade needs the owner's approval.
+
+Reminders: Cloud Scheduler gives 3 free jobs per billing account (this uses one). Each run
+wakes the Neon database, which then stays on about 5 minutes; every 15 minutes for 17 hours a
+day is roughly 40–45 of Neon's free monthly compute hours (100 per project at the time of
+writing; check Neon → Usage). If usage gets close, slow the schedule (step 3 above).
 
 ## Lessons from the move (October 15–16)
 

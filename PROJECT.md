@@ -22,8 +22,8 @@ with explicit external task searches.
 Chris's Google connection and hosted AI have been verified. Melissa's live sign-in and
 calendar connection still need verification. See docs/verification.md for evidence.
 
-Reminder preferences are stored, but notifications are not delivered. There is no
-closed-app sync scheduler. Full household export/restore is implemented; its hosted recovery
+Phone reminders are delivered by Web Push to devices that turn them on (real-phone delivery
+still to be verified). There is no closed-app Google sync. Full household export/restore is implemented; its hosted recovery
 drill, writable Google calendars and durable production storage remain release
 requirements, not optional polish.
 
@@ -59,8 +59,8 @@ month. Ask about important missing details, including end time and whose birthda
 Do not infer Logan is the gift recipient. Propose buying a gift, wrapping it, and confirming
 the address. Ask recipient age and budget for a useful editable search prompt. Allow
 individual edits/approval/dismissal and approve-all. Approved tasks link to the activity
-and appear in the organizer; retrying approval cannot duplicate records. Reminder delivery
-is a pending acceptance gate. Model suggestions alone never authorize writes or purchases.
+and appear in the organizer; retrying approval cannot duplicate records. Reminders on approved
+records are sent as phone notifications once delivery is turned on. Model suggestions alone never authorize writes or purchases.
 
 ## Repository and operations
 

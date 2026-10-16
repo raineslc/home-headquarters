@@ -264,7 +264,7 @@ def detail(request, pk):
                 bump(household)
                 added = len(selected)
                 messages.success(request, 'Draft edits saved. Nothing added yet.' if action.startswith('save:') else
-                                 f'Added {added} item{"s" if added != 1 else ""} to your plans. Reminder preferences are saved, but notifications are not enabled.')
+                                 f'Added {added} item{"s" if added != 1 else ""} to your plans. Phone reminders go to devices that turned them on in Settings.')
                 if request.POST.get('next') == 'home' and not action.startswith('save:'):
                     return redirect(reverse('home') + '#assistant')
                 return redirect('assistant_plan', pk=pk)

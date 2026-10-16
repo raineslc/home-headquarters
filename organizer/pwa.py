@@ -60,6 +60,24 @@ self.addEventListener('fetch', event => {
     event.respondWith(caches.match(request).then(hit => hit || fetch(request)));
   }
 });
+// Phone reminders: show the notification; a tap opens the plan in the app.
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (error) { data = {}; }
+  event.waitUntil(self.registration.showNotification(data.title || 'Home Headquarters', {
+    body: data.body || '', icon: %(icon)s, badge: %(badge)s, tag: data.tag || undefined, data: {url: data.url || '/'}}));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + '/';
+  event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(windows => {
+    for (const client of windows) {
+      if (client.url.startsWith(self.location.origin) && 'focus' in client) return client.focus().then(c => c.navigate(url));
+    }
+    return self.clients.openWindow(url);
+  }));
+});
 """
 
 @require_GET
@@ -67,7 +85,8 @@ def service_worker(request):
     files = shell_files()
     # The hashed file names change whenever the CSS or script changes, which refreshes the cache.
     version = hashlib.sha256('|'.join(files).encode()).hexdigest()[:12]
-    body = SERVICE_WORKER % {'version': version, 'files': json.dumps(files)}
+    body = SERVICE_WORKER % {'version': version, 'files': json.dumps(files), 'icon': json.dumps(static('icons/icon-192.png')),
+                             'badge': json.dumps(static('icons/favicon-32.png'))}
     return HttpResponse(body, content_type='application/javascript')
 
 @require_GET

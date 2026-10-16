@@ -283,3 +283,30 @@ class ChecklistItem(models.Model):
     class Meta:
         ordering = ['position', 'text']
         constraints = [models.CheckConstraint(condition=models.Q(activity__isnull=False, task__isnull=True) | models.Q(activity__isnull=True, task__isnull=False), name='checklist_item_has_one_owner')]
+
+class PushSubscription(models.Model):
+    """A phone or browser that turned on reminders (REM-01). Every parent device in the household
+    receives the household's reminders. Endpoint and keys come from the browser's push service."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    endpoint = models.TextField(unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    label = models.CharField(max_length=60, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+
+class ReminderDelivery(models.Model):
+    """One reminder to one device. The unique key makes each reminder send at most once per device;
+    a failed send is retried on later runs (up to MAX_ATTEMPTS) while the reminder is still due."""
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE, related_name='deliveries')
+    key = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['subscription', 'key'], name='one_delivery_per_device_reminder')]

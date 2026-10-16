@@ -92,7 +92,7 @@ class ActivityForm(VersionForm):
             self.fields['participants'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk__in=included)).order_by('name')
         if 'reminder_minutes' in self.fields:
             from .assistant_forms import REMINDERS
-            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Reminder preference (delivery not enabled)')
+            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Phone reminder')
         if 'google_sync' in self.fields:
             if not has_family_calendar(household) and not self.instance.google_sync:
                 del self.fields['google_sync']  # nothing to choose until the family Google calendar exists
@@ -150,7 +150,7 @@ class TaskForm(VersionForm):
             self.fields['activity'].queryset = Activity.objects.filter(household=household)
         if 'reminder_minutes' in self.fields:
             from .assistant_forms import REMINDERS
-            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Reminder preference (delivery not enabled)')
+            self.fields['reminder_minutes'] = forms.TypedChoiceField(choices=REMINDERS, coerce=int, empty_value=None, required=False, label='Phone reminder')
         if 'search_questions' in self.fields:
             self.fields['search_questions'].label = 'Details to check before searching'
 
