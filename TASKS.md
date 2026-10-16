@@ -174,7 +174,7 @@ participation. No further approval is needed merely to develop reversible local 
   pending suggestion titles with tick boxes, an "Add N selected" button (approves from each
   suggestion's saved draft, validated as usual; a problem opens the detailed review), the number
   of open questions, "Review in detail" and "Start a new request". Owner decisions: a missing end
-  time is assumed one hour after the start (capped at 11:59 PM, shown as "end time assumed", and
+  time is assumed one hour after the start (capped at 11:59 PM, noted only on the detailed review, and
   end-time questions are dropped); the end date is the start date unless stated.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   Saved reminder preferences are implemented but do not satisfy delivery acceptance.

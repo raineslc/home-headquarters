@@ -8,11 +8,11 @@ The containing Git commit identifies an entry; do not invent its own SHA before 
 
 - Author: Claude Code. Task: AI-08 (owner request).
 - After the assistant prepares suggestions from the Overview, its tile shows their titles with
-  tick boxes and "Add N selected", plus "Review in detail" and "Start a new request". Quick
+  tick boxes (titles only) and "Add N selected", plus "Review in detail" and "Start a new request". Quick
   approval uses each suggestion's saved draft and is validated like the detailed review; any
   problem opens the detailed review instead.
-- A missing end time is assumed to be one hour after the start (shown as "end time assumed",
-  no question asked); the end date is the start date unless the request says otherwise.
+- A missing end time is assumed to be one hour after the start (noted on the detailed review
+  card, not on the Overview; no question asked); the end date is the start date unless the request says otherwise.
 - Validation: 102 organizer tests (3 new) on local PostgreSQL; local walk-through added a
   birthday party (2:00–3:00 PM, same day) and two linked tasks from the Overview tile.
 

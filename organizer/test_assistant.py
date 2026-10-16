@@ -220,7 +220,7 @@ class AssistantTests(TestCase):
         plan = AssistantPlan.objects.get()
         page = self.client.get('/')
         self.assertContains(page, 'Review in detail')
-        self.assertContains(page, 'end time assumed')
+        self.assertNotContains(page, 'end time assumed')
         for title in ('Birthday party', 'Buy a gift', 'Wrap the gift', 'Confirm the address'):
             self.assertContains(page, title)
         event = plan.suggestions.get(kind='event')
