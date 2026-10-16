@@ -64,11 +64,11 @@ is a pending acceptance gate. Model suggestions alone never authorize writes or 
 ## Repository and operations
 
 - Canonical source: https://github.com/raineslc/home-headquarters (private).
-- Preview: https://home-headquarters-test.onrender.com
-- Hosting workspace: Home Headquarters; web service home-headquarters-test.
-- Only free hosting testing is approved. Paid hosting/scheduling requires owner approval.
-- Free database expiry last recorded: November 11, 2026, 9:56 PM America/New_York.
-  Verify in Render before relying on this date. Source backup is not a household-data backup.
+- Site: https://home-headquarters-140747200253.us-east4.run.app (Google Cloud Run, project home-headquarters-prod, us-east4).
+- Database: Neon PostgreSQL 17 (free plan). Owner approved this setup on October 14, 2026,
+  aiming for $0/month with a budget alert; any paid upgrade still needs owner approval.
+- Render (home-headquarters-test) was retired October 16, 2026; its database expires
+  November 11 and is only a fallback. Source backup is not a household-data backup.
 - Preserve the older application, backups, existing Google grants and other hosted projects.
 - No email ingestion, autonomous purchases, travel intelligence, chore rewards or document
   storage before first-release requirements are complete.

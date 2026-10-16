@@ -4,6 +4,15 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Switched to Cloud Run + Neon
+
+- Author: Claude Code. Tasks: FND-03, OPS-02.
+- The owner moved the live site to Google Cloud Run + Neon and verified sign-in, data and
+  Google calendars. The Render deploy job and the unapproved Render production proposal were
+  removed; render.yaml is marked retired. Docs, settings defaults and the Settings page now
+  describe Cloud Run. The setup script checks each pasted value (one copy, no stray keys) and
+  asks for the client secret of this project's own sign-in client.
+
 ## 2026-10-16 — Google connect failures are diagnosable
 
 - Author: Claude Code. Task: FND-03 / GGL-01 (first Google connect on Cloud Run failed).

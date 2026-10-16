@@ -1,11 +1,15 @@
 # Hosting: Google Cloud Run + Neon (FND-03)
 
+**Status:** live since October 16, 2026 at https://home-headquarters-140747200253.us-east4.run.app.
+Render is retired (database kept as a fallback until it expires November 11).
+
 Owner approved October 14, 2026, after Render's free tier missed deploys and paused free
 deploys during an incident. Goal: about $0/month for one household, with a budget alert.
 
 | Piece | Service | Notes |
 |---|---|---|
 | App | Cloud Run `home-headquarters`, region us-east4 | Scales to zero; min 0, max 2 instances, 512 MiB |
+| Sign-in | OAuth client "Home Headquarters (Cloud Run)" in home-headquarters-prod | Calendar API enabled; scopes include calendar.app.created |
 | Database | Neon PostgreSQL 17, US East (Virginia) | Free plan; use the **direct** (non-pooler) connection string, because `migrate_locked` holds a session advisory lock |
 | Secrets | Secret Manager (`hhq-*`) | Django key, database URL, Google client secret and token key, OpenAI key |
 | Images | Artifact Registry `hhq` (us-east4) | Cleanup keeps the 3 newest images |
@@ -46,3 +50,13 @@ database (QA-04).
 Cloud Run, Secret Manager and Artifact Registry have monthly free allowances that one family
 should stay well inside; Neon's free plan has no expiry. Prices and allowances change, so the
 budget alert is the safety net. Any paid upgrade needs the owner's approval.
+
+## Lessons from the move (October 15–16)
+
+- Paste each value **once**; hidden prompts make doubles easy. Prefer the visible editor:
+  `nano ~/value.txt`, then `tr -d '\r\n ' < ~/value.txt | gcloud secrets versions add NAME --data-file=- && shred -u ~/value.txt`.
+- Check a secret without showing it: length, number of `://`, and host only.
+- Secrets are read when Cloud Run starts. After changing one, restart with
+  `gcloud run services update home-headquarters --region us-east4 --update-env-vars SECRETS_REFRESHED=$(date +%s)`.
+- A new OAuth client needs its own secret (create one on the client page) and Calendar API
+  enabled in the same project; old Google connections must reconnect.

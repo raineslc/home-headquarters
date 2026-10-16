@@ -3,7 +3,7 @@ import os
 from django.utils import timezone
 
 REPOSITORY = 'https://github.com/raineslc/home-headquarters'
-# Recorded when the app process loads; on Render this is the latest deploy or wake-up.
+# Recorded when the app process loads; on Cloud Run this is the latest deploy or cold start.
 STARTED = timezone.now()
 
 def info():

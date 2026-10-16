@@ -15,8 +15,8 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 
 ## Next work and blockers
 
-1. **REC-01 / FND-03:** deploy the full household export, download a real export, and run the
-   isolated hosted recovery drill. Decide durable hosting before free database expiry on November 11.
+1. **FND-03 / REC-01:** hosting moved to Cloud Run + Neon (October 16). Remaining: backup routine,
+   and the recovery drill (the Render-to-Neon copy already proved a full database restore).
 2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
 3. **GGL-02** live setup (add the calendar.app.created scope in Google Cloud, deploy, one parent opts in) and AI-04 live run.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
@@ -36,10 +36,12 @@ participation. No further approval is needed merely to develop reversible local 
   on October 14 (aim: $0/month with a budget alert; free run.app address for now). Code: Dockerfile,
   platform-neutral settings (APP_HOSTNAME, proxy header for Cloud Run, APP_COMMIT), deploy job with
   Workload Identity Federation and a migration job, Cloud Shell scripts deploy/gcp-setup.sh and
-  deploy/copy-database.sh, runbook docs/HOSTING.md. Owner ran gcp-setup.sh (project
-  home-headquarters-prod, number 140747200253) and is creating a new Google sign-in client there;
-  parents reconnect Google once after the move. Remaining: owner runs setup and copy, first
-  Cloud Run deploy, verification, final copy and cutover, retire Render after November 11 fallback.
+  deploy/copy-database.sh, runbook docs/HOSTING.md. **Hosting move done October 16**: owner
+  ran setup (project home-headquarters-prod), copied the database (all 14 table counts matched),
+  first Cloud Run deploy succeeded (run 38930083618, f28fc59), new OAuth client and Google
+  reconnect verified, owner switched to https://home-headquarters-140747200253.us-east4.run.app; no further copy needed.
+  Remaining: backup routine/retention decision (proposed weekly export to Cloud Storage), budget
+  alert confirmation, suspend Render web service; Render database expires November 11.
 - [ ] REC-01 Versioned export of **all** household organizer data, validated restore with
   recovery point before replacement, conflict handling and isolated-environment recovery drill.
   **Implemented, hosted drill pending (Claude Code).** Export format version 2 covers notes,
@@ -58,10 +60,10 @@ participation. No further approval is needed merely to develop reversible local 
 - [x] OPS-01 Settings → App version shows the running commit (linked to GitHub) and server start
   time, so a missed deploy is visible (owner request, Claude Code, after PRs 5 and 6 merged on
   October 14 without Render starting deploys; fixed by manual deploy dep-db7ttngm7kps73ct3t4g).
-- [ ] OPS-02 Reliable deploys (Claude Code, owner request): GitHub Actions `deploy` job calls the
-  Render deploy hook (secret RENDER_DEPLOY_HOOK, added by the owner) after checks pass on main;
-  render.yaml sets autoDeployTrigger off. Pending: first hook deploy confirmed live, and Render's
-  service setting showing Auto-Deploy off (Blueprint sync or dashboard).
+- [x] OPS-02 Reliable deploys (Claude Code, owner request): superseded by the Cloud Run
+  deploy-cloud-run job (Workload Identity Federation, migration job, health check). First run
+  live October 16 (38930083618). The Render hook job was removed; the RENDER_DEPLOY_HOOK secret
+  can be deleted.
 - [x] FND-04 Source in private GitHub; environment recreation and secret-name-only example.
   Local source bundle exists separately. Neither is a household-data backup.
 
@@ -209,17 +211,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: APP-01 installable Android app and QA-02 phone layout pass.
-  GGL-02 and OPS-01 (PR 7) merged earlier the same day.
-- Starting canonical GitHub commit: `5dae6cc8b51d5149ff3ad314c2695b5e9a738b66` (merged PR 7); branch `pwa-android-mobile`.
+- Assistant: Claude Code. Change: FND-03 cutover cleanup (Cloud Run is the only deploy target;
+  docs updated; setup script input checks). Hosting moved October 16.
+- Starting canonical GitHub commit: `f28fc59206fb6d6b529e45fe731afaad51c34e23` (merged PR 11); branch `fnd-03-cutover-cleanup`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 94 organizer
-  tests passed, deploy check and migration drift check passed; 375px audit of every page and
-  headless Edge check of service worker, installability and offline fallback.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): organizer tests,
+  deploy check and migration drift check passed; workflow YAML parsed; scripts syntax-checked.
   CI status for the pushed branches is reported in the handoff.
 - Remaining blockers: hosted recovery drill, paid hosting/scheduler approval, second-parent
-  participation, reminder delivery. Next: merge APP-01, install on an Android phone, Google Cloud scope + live setup, REC-01 drill, FND-03.
+  participation, reminder delivery. Next: backup routine, Android install, AI suggestion streamlining, GGL-02 family calendar.
 
 ## Deferred until first release works
 
