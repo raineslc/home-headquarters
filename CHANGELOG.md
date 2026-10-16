@@ -4,6 +4,21 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Snap a flyer
+
+- Author: Claude Code. Task: AI-10 (owner request).
+- "Snap a flyer" on the Overview assistant tile and the Assistant page: take or choose a photo
+  of a flyer, invitation or school notice (a note is optional) and the assistant drafts the
+  activity and any deadline tasks for review, as usual.
+- The phone shrinks the photo before upload. The server checks it is a real JPEG, PNG or WebP,
+  sends it to OpenAI with that one request and never saves it.
+- The assistant's instructions now say reminders are sent only after approval (they were
+  described as "not enabled").
+- Validation: 127 organizer tests (5 new: photo sent once and not stored, note plus photo,
+  unsupported/missing/oversized input refused without an AI call, provider request carries the
+  image, buttons offered); phone-width check of the tile and photo shrinking (4000×3000 PNG to a
+  36 KB 1600 px JPEG). A real flyer has not been tried yet (needs the live API key).
+
 ## 2026-10-16 — Phone reminders
 
 - Author: Claude Code. Tasks: REM-01, REM-02, AI-05 (REM-03 real-phone check pending).

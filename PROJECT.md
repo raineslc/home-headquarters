@@ -60,7 +60,8 @@ Do not infer Logan is the gift recipient. Propose buying a gift, wrapping it, an
 the address. Ask recipient age and budget for a useful editable search prompt. Allow
 individual edits/approval/dismissal and approve-all. Approved tasks link to the activity
 and appear in the organizer; retrying approval cannot duplicate records. Reminders on approved
-records are sent as phone notifications once delivery is turned on. Model suggestions alone never authorize writes or purchases.
+records are sent as phone notifications once delivery is turned on. A flyer photo can start a
+request; it is sent to OpenAI with that request and never stored. Model suggestions alone never authorize writes or purchases.
 
 ## Repository and operations
 
