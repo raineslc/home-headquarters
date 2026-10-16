@@ -36,7 +36,9 @@ participation. No further approval is needed merely to develop reversible local 
   on October 14 (aim: $0/month with a budget alert; free run.app address for now). Code: Dockerfile,
   platform-neutral settings (APP_HOSTNAME, proxy header for Cloud Run, APP_COMMIT), deploy job with
   Workload Identity Federation and a migration job, Cloud Shell scripts deploy/gcp-setup.sh and
-  deploy/copy-database.sh, runbook docs/HOSTING.md. Remaining: owner runs setup and copy, first
+  deploy/copy-database.sh, runbook docs/HOSTING.md. Owner ran gcp-setup.sh (project
+  home-headquarters-prod, number 140747200253) and is creating a new Google sign-in client there;
+  parents reconnect Google once after the move. Remaining: owner runs setup and copy, first
   Cloud Run deploy, verification, final copy and cutover, retire Render after November 11 fallback.
 - [ ] REC-01 Versioned export of **all** household organizer data, validated restore with
   recovery point before replacement, conflict handling and isolated-environment recovery drill.

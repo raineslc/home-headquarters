@@ -158,3 +158,17 @@ class GoogleTests(TestCase):
         self.client.logout()
         self.client.get('/join/?invite=expired-fixture')
         self.assertEqual(self.client.get('/join/').status_code, 400)
+
+    def test_tokens_from_another_sign_in_client_ask_to_reconnect(self):
+        from google.auth.exceptions import RefreshError
+        for code in ('invalid_grant', 'unauthorized_client', 'invalid_client'):
+            GoogleConnection.objects.filter(pk=self.connection.pk).update(needs_reconnect=False)
+            with self.subTest(code=code), patch('organizer.google_service.Credentials.refresh', side_effect=RefreshError(f'{code}: Unauthorized')):
+                with self.assertRaises(google.ReconnectRequired):
+                    google.access_token(self.connection)
+            self.connection.refresh_from_db()
+            self.assertTrue(self.connection.needs_reconnect)
+        with patch('organizer.google_service.Credentials.refresh', side_effect=RefreshError('temporarily_unavailable')):
+            with self.assertRaises(google.GoogleUnavailable) as raised:
+                google.access_token(self.connection)
+            self.assertNotIsInstance(raised.exception, google.ReconnectRequired)

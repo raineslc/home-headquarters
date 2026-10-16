@@ -58,8 +58,9 @@ def access_token(connection, write=False):
         credentials.refresh(partial(Request(session=requests.Session()), timeout=20))
         return credentials.token
     except GoogleAuthError as error:
-        # Only a rejected grant requires reconnect; temporary outages remain retryable.
-        if 'invalid_grant' in str(error):
+        # A rejected grant, or a token issued to a different sign-in client (after moving to a new
+        # client), requires reconnect; temporary outages remain retryable.
+        if any(code in str(error) for code in ('invalid_grant', 'unauthorized_client', 'invalid_client')):
             GoogleConnection.objects.filter(pk=connection.pk).update(needs_reconnect=True)
             raise ReconnectRequired('Google access expired. Connect this account again.') from None
         if write and 'invalid_scope' in str(error):
