@@ -23,7 +23,7 @@ gcloud config set project "$PROJECT" >/dev/null
 NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
 echo "Enabling services (one minute)..."
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
-  iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com
+  iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com calendar-json.googleapis.com
 
 echo "Image repository (keeps the 3 newest images to stay inside the free storage allowance)..."
 gcloud artifacts repositories describe hhq --location "$REGION" >/dev/null 2>&1 || \
@@ -68,12 +68,21 @@ retry gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" --role=role
 grant() {  # let the app's runtime account read one secret
   retry gcloud secrets add-iam-policy-binding "$1" --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor
 }
+clean() {  # label, value: refuse stray key presses, spaces and double pastes (hidden prompts hide them)
+  if [ -z "$2" ]; then echo "  Empty $1; stopping. Re-run the script to continue."; exit 1; fi
+  if printf '%s' "$2" | LC_ALL=C grep -q '[[:cntrl:][:space:]]'; then
+    echo "  The $1 contains spaces or stray key presses. Re-run and paste it once, then press Enter only."; exit 1
+  fi
+  if [ "$(printf '%s' "$2" | grep -o '://' | wc -l)" -gt 1 ]; then
+    echo "  The $1 looks pasted twice. Re-run and paste it once."; exit 1
+  fi
+}
 secret() {  # name, prompt
   if gcloud secrets describe "$1" >/dev/null 2>&1; then
     echo "  $1 already exists (kept)."
   else
     read -r -s -p "  $2: " value; echo
-    [ -n "$value" ] || { echo "  Empty value; stopping. Re-run the script to continue."; exit 1; }
+    clean "$1" "$value"
     printf '%s' "$value" | gcloud secrets create "$1" --data-file=- --replication-policy=automatic >/dev/null
     unset value
   fi
@@ -87,6 +96,9 @@ if ! gcloud secrets describe hhq-django-secret-key >/dev/null 2>&1; then
 fi
 grant hhq-django-secret-key
 read -r -s -p "  Neon DIRECT connection string (Neon > Connect, connection pooling OFF): " neon; echo
+clean "Neon connection string" "$neon"
+[ "$(printf '%s' "$neon" | grep -o '://' | wc -l)" -eq 1 ] || { echo "  That is not a single connection string."; exit 1; }
+rest="${neon#*@}"; echo "  Neon host: ${rest%%[/:?]*}"; unset rest
 case "$neon" in
   *-pooler*) echo "  That is the pooled string. Turn pooling off in Neon's Connect dialog and copy again."; exit 1 ;;
   postgres*://*) ;;
@@ -100,7 +112,7 @@ fi
 unset neon
 grant hhq-database-url
 secret hhq-google-token-key "GOOGLE_TOKEN_KEY from Render > Environment (must match exactly)"
-secret hhq-google-client-secret "GOOGLE_CLIENT_SECRET from Render > Environment"
+secret hhq-google-client-secret "Client secret of THIS project's web sign-in client (starts with GOCSPX-)"
 secret hhq-openai-api-key "OPENAI_API_KEY from Render > Environment"
 
 HOST="home-headquarters-$NUMBER.$REGION.run.app"
@@ -111,11 +123,14 @@ https://github.com/$GITHUB_REPO/settings/variables/actions
   GCP_PROJECT_ID   = $PROJECT
   GCP_WIF_PROVIDER = projects/$NUMBER/locations/global/workloadIdentityPools/github/providers/github
   APP_HOSTNAME     = $HOST
-  GOOGLE_CLIENT_ID = (the GOOGLE_CLIENT_ID value from Render > Environment; it is not secret)
+  GOOGLE_CLIENT_ID = (the Client ID of this project's web sign-in client; it is not secret)
 
-In Google Cloud Console > Google Auth Platform > Clients > your web client, add this
-authorized redirect URI (keep the Render one until cutover):
+The sign-in client must be in this project (Google Auth Platform > Clients > Web application)
+with this authorized redirect URI:
   https://$HOST/connections/google/callback/
+If you create the client after this script, store its secret with:
+  nano ~/value.txt   (paste once, save), then
+  tr -d '\r\n ' < ~/value.txt | gcloud secrets versions add hhq-google-client-secret --data-file=- && shred -u ~/value.txt
 
 New site address after the first deploy: https://$HOST
 SUMMARY

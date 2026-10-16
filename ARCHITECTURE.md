@@ -8,14 +8,13 @@ Python 3.13.7, Django 5.2 LTS, PostgreSQL 17, Gunicorn and WhiteNoise. Server-re
 templates with small CSS/JavaScript assets; no SPA, browser database or second local backend.
 Dependencies are pinned in requirements.txt. PostgreSQL is required in every environment.
 
-Target hosting (FND-03, in progress): Google Cloud Run + Neon via the Dockerfile and the
-workflow's deploy-cloud-run job; see docs/HOSTING.md. Until cutover:
-Render's root render.yaml provisions the free preview web service and database. Build
-installs requirements and collects static assets. Startup runs migrate_locked under a
-PostgreSQL advisory lock, then Gunicorn. GitHub Actions runs deployment checks, migration
-drift checks, static collection and all organizer tests against disposable PostgreSQL 17.
-A deploy job in the same workflow calls Render's deploy hook after checks pass on main;
-Render auto-deploy is off. render.production-proposal.yaml is unapproved.
+Hosting (FND-03): Google Cloud Run (us-east4, scales to zero) with Neon PostgreSQL 17 (direct,
+non-pooled connection). The Dockerfile collects static files at build; Gunicorn serves the app.
+GitHub Actions runs deployment checks, migration drift checks, static collection, all organizer
+tests against disposable PostgreSQL 17 and a container build. On main, deploy-cloud-run pushes
+the image, runs migrate_locked as the Cloud Run job hhq-migrate (PostgreSQL advisory lock),
+deploys the service with Secret Manager secrets and checks /health/. See docs/HOSTING.md.
+Render (render.yaml) is retired and kept only until its database expires.
 run_jobs currently implements a locked/deduplicated heartbeat only; no real reminder queue.
 
 ## Code map
@@ -80,7 +79,7 @@ transaction. Approve-all is atomic; successful retries do not recreate deleted r
 Dates use the household zone. DST-nonexistent and ambiguous local activity times are
 rejected in the current preview; supporting ambiguity explicitly remains a design task.
 
-Secrets live only in ignored .env.local or Render environment settings. .env.example
+Secrets live only in ignored .env.local or Google Secret Manager (hhq-* secrets). .env.example
 lists names without values. Keep OPENAI_API_KEY, GOOGLE_CLIENT_SECRET, GOOGLE_TOKEN_KEY,
 DATABASE_URL, session/bootstrap secrets, tokens and invitation links out of source, chats,
 logs and exports. Gunicorn logs paths without query strings or referrers. Google access

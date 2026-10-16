@@ -1,7 +1,7 @@
 # Approval-based assistant preview
 
 The Assistant page and overview composer call OpenAI Responses using `gpt-5-mini`.
-Set `OPENAI_API_KEY` in the Render service's private environment, never in source or
+Set `OPENAI_API_KEY` in Secret Manager (hhq-openai-api-key), never in source or
 client JavaScript. `OPENAI_MODEL` is optional. The server sends the entered conversation,
 current draft edits, local date/time zone, and active family names/roles/IDs. Existing
 calendar entries are checked locally and are not sent to OpenAI. Requests set store=false.

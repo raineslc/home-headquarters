@@ -1,3 +1,5 @@
+# RETIRED October 16, 2026: production runs on Google Cloud Run + Neon (docs/HOSTING.md).
+# Kept only until the Render database expires (November 11, 2026) as a read-only fallback.
 # User approved free deployment testing only. Not a production release.
 databases:
   - name: home-headquarters-test-db

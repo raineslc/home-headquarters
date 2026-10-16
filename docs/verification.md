@@ -106,3 +106,11 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - PR 8 (f4daa8d) merged with passing main CI (run 38640758647) but Render recorded no deploy or event. A manual deploy request then returned 503 "deploys is currently unavailable".
 - The owner added the RENDER_DEPLOY_HOOK repository secret. The workflow deploy job calls it after checks pass on main; the first run's outcome is recorded below when confirmed.
+
+## Move to Cloud Run + Neon (FND-03), October 15–16, 2026 — Claude Code with the owner
+
+- Owner ran deploy/gcp-setup.sh in Cloud Shell (project home-headquarters-prod). First run hit a new-service-account delay ("does not exist"); re-run succeeded and the script now retries.
+- deploy/copy-database.sh copied Render to Neon (PostgreSQL 17 tools): all 14 checked tables matched (for example auth_user=1, organizer_task=7, organizer_assistantsuggestion=15, django_migrations=24). A first attempt failed harmlessly on a double-pasted URL; the script now rejects that.
+- First deploy-cloud-run run (38930083618) failed at the migration job: the stored database URL was garbled by a double paste and key presses. The log printed the Neon password, so the owner reset it and stored a fresh direct string via the visible editor; the re-run succeeded (f28fc59). /health/ returned ok in 78 ms; manifest and service worker served.
+- Google connect first failed because the secret was the old client's (only version 1 existed); after creating a new client secret, storing it and restarting, connect succeeded. Calendars listed only after enabling the Google Calendar API in the new project.
+- Owner confirmed calendars working and switched to https://home-headquarters-140747200253.us-east4.run.app; no final copy was needed because nothing changed on Render after the copy.

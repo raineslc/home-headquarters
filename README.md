@@ -33,7 +33,7 @@ the only copy of important family plans.
 - Django 5.2 LTS: password authentication, server sessions, CSRF protection, templates,
   household-authorized endpoints, versioned migrations.
 - PostgreSQL 17 in every environment; no SQLite or browser-storage substitute.
-- Render web application and (after approval) scheduled job using the same source.
+- Google Cloud Run web service and migration job built from the same container image.
 - WhiteNoise serves the small compiled static bundle; no CDN script dependencies.
 - Secrets remain in ignored local configuration or hosting environment variables.
 
@@ -60,27 +60,17 @@ The hosted application uses the same code and PostgreSQL schema.
 
 ## Deployment
 
-Moving to Google Cloud Run + Neon (FND-03); see [docs/HOSTING.md](docs/HOSTING.md). The
-Render notes below apply until cutover.
+Production runs on **Google Cloud Run** (project `home-headquarters-prod`, us-east4) with a
+**Neon PostgreSQL 17** database: https://home-headquarters-140747200253.us-east4.run.app. See [docs/HOSTING.md](docs/HOSTING.md).
 
-The root `render.yaml` is **free testing only**, per the user's choice. The free
-PostgreSQL database expires after 30 days, and the web service may sleep. The
-`render.production-proposal.yaml` is an unapproved proposal, not an active deployment.
-Do not provision its paid resources until the user approves the recurring charges.
+Every merge to `main` deploys after all checks pass: the `deploy-cloud-run` job signs in with
+Workload Identity Federation (no stored keys), pushes the image, runs migrations as the Cloud
+Run job `hhq-migrate`, deploys the service and checks `/health/`. Settings → App version shows
+the running commit. Secrets live in Secret Manager; never paste passwords, connection strings
+or codes into chat, source, shell arguments or URLs. Setup is closed in the database.
 
-Deploy the root Blueprint from the private GitHub repository. The owner enters their
-email in `OWNER_EMAIL`. Render generates the session secret and one-time setup code.
-Use the setup code from the web service's Environment settings at `/setup/`; the owner
-chooses their password directly in the application. Never paste passwords or codes into
-chat, source, shell command arguments, or URLs. After setup, remove `BOOTSTRAP_TOKEN`
-from hosting and deploy again. Setup also remains closed in the database.
-
-Deploys run from GitHub Actions: after every check passes on `main`, the `deploy` job calls
-Render's deploy hook (repository secret `RENDER_DEPLOY_HOOK`). Render's own auto-deploy is
-off (`autoDeployTrigger: 'off'`) because it missed several merges. Settings → App version
-shows the running commit; if a merge does not appear, check the Actions run's deploy job.
-The free web service applies migrations under a database lock before starting. Paid
-hosting moves that operation into the pre-deploy phase.
+Render was retired on October 16, 2026; `render.yaml` remains only until its database expires
+(November 11, 2026).
 
 ## Verification
 

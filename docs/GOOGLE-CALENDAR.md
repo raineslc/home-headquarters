@@ -7,16 +7,17 @@ email's account; email delivery/verification is not implemented in this preview.
 
 ## Deployment configuration
 
-Use a dedicated OAuth Web application client for this deployment. Do not alter
-old application credentials. Enable Google Calendar API in its Google Cloud
-project. Configure External consent for the parents' Google accounts; in Testing,
+Use the OAuth Web application client "Home Headquarters (Cloud Run)" in the
+home-headquarters-prod project (created October 16, 2026; the earlier client in the old
+project served Render only). Enable Google Calendar API in this project. Configure External consent for the parents' Google accounts; in Testing,
 add both as test users. Testing refresh tokens for calendar scopes expire after
 seven days. No Google billing upgrade is required by this implementation.
 
 Exact authorized redirect URI:
-`https://home-headquarters-test.onrender.com/connections/google/callback/`
+`https://home-headquarters-140747200253.us-east4.run.app/connections/google/callback/`
 
-Set the following only in Render's secret environment settings:
+Configuration (see docs/HOSTING.md): `GOOGLE_CLIENT_ID` is a GitHub repository variable passed
+at deploy; the others are Secret Manager secrets.
 
 - `GOOGLE_CLIENT_ID`: the Web application's client ID.
 - `GOOGLE_CLIENT_SECRET`: its secret, never source-controlled or pasted into chat.
@@ -24,7 +25,7 @@ Set the following only in Render's secret environment settings:
   `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
   in a private terminal. Store separately from database backups. Changing it without
   re-encryption requires both parents to reconnect.
-- `GOOGLE_REDIRECT_URI`: the exact URI above (the deployment's default).
+- `GOOGLE_REDIRECT_URI`: the exact URI above (set at deploy from APP_HOSTNAME).
 
 Requested scopes: `openid`, `userinfo.email`, `calendar.calendarlist.readonly`,
 `calendar.events.readonly` (Google's standard full scope URLs in google_service.py).
