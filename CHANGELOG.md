@@ -4,6 +4,18 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Quick approval on the Overview
+
+- Author: Claude Code. Task: AI-08 (owner request).
+- After the assistant prepares suggestions from the Overview, its tile shows their titles with
+  tick boxes (titles only) and "Add N selected", plus "Review in detail" and "Start a new request". Quick
+  approval uses each suggestion's saved draft and is validated like the detailed review; any
+  problem opens the detailed review instead.
+- A missing end time is assumed to be one hour after the start (noted on the detailed review
+  card, not on the Overview; no question asked); the end date is the start date unless the request says otherwise.
+- Validation: 102 organizer tests (3 new) on local PostgreSQL; local walk-through added a
+  birthday party (2:00–3:00 PM, same day) and two linked tasks from the Overview tile.
+
 ## 2026-10-16 — Assistant suggests fewer, combined tasks
 
 - Author: Claude Code. Task: AI-07 (owner request).

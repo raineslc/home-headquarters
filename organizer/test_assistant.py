@@ -117,7 +117,8 @@ class AssistantTests(TestCase):
         data['tasks'][0]['search_prompt'] = 'Logan birthday gift parent@example.test'
         result = validate_proposal(data, self.house)
         self.assertIn('Nothing has been added', result['reply'])
-        self.assertIn('What time does the activity end?', result['questions'])
+        self.assertEqual((result['event']['end_time'], result['event']['assumed']), ('15:00:00', ['end time']))
+        self.assertNotIn('What time does the activity end?', result['questions'])
         self.assertNotIn('Logan', result['tasks'][0]['search_prompt'])
         self.assertNotIn('@', result['tasks'][0]['search_prompt'])
         data = copy.deepcopy(self.proposal)
@@ -187,6 +188,65 @@ class AssistantTests(TestCase):
         self.assertContains(response, 'Tick at least one suggestion to add.')
         data['selected'] = [str(plan.suggestions.get(kind='event').pk)]
         response = self.client.post(f'/assistant/{plan.pk}/', data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Choose a time')
+        self.assertFalse(Activity.objects.exists())
+
+    def test_assumed_end_time_and_same_day_end_date(self):
+        def run(**changes):
+            proposal = copy.deepcopy(self.proposal)
+            proposal['event'].update(changes)
+            proposal['questions'] = ['When does the party end?', 'What age and budget?']
+            return validate_proposal(proposal, self.house)
+        result = run(end_time=None, end_date=None)
+        self.assertEqual((result['event']['end_date'], result['event']['end_time']), ('2026-10-17', '15:00:00'))
+        self.assertEqual(result['questions'], ['What age and budget?'])
+        late = run(start_time='23:30', end_time=None)
+        self.assertEqual(late['event']['end_time'], '23:59:00')
+        given = run(end_time='17:00')
+        self.assertEqual(given['event']['end_time'], '17:00:00')
+        self.assertNotIn('assumed', given['event'])
+        self.assertIn('When does the party end?', given['questions'])
+        all_day = run(all_day=True, start_time=None, end_time=None)
+        self.assertIsNone(all_day['event']['end_time'])
+        trip = run(end_date='2026-10-19', end_time=None)
+        self.assertEqual(trip['event']['end_date'], '2026-10-19')
+
+    def test_overview_quick_list_adds_selected_items(self):
+        proposal = validate_proposal(copy.deepcopy(dict(self.proposal, event=dict(self.proposal['event'], end_time=None))), self.house)
+        with patch('organizer.assistant.propose', return_value=proposal):
+            response = self.client.post('/assistant/', {'prompt': 'Logan has a birthday party Saturday at 2 PM.', 'request_key': str(uuid.uuid4()), 'origin': 'home'})
+        self.assertEqual(response.url, '/#assistant')
+        plan = AssistantPlan.objects.get()
+        page = self.client.get('/')
+        self.assertContains(page, 'Review in detail')
+        self.assertNotContains(page, 'end time assumed')
+        for title in ('Birthday party', 'Buy a gift', 'Wrap the gift', 'Confirm the address'):
+            self.assertContains(page, title)
+        event = plan.suggestions.get(kind='event')
+        buy = plan.suggestions.get(payload__title='Buy a gift')
+        response = self.client.post(f'/assistant/{plan.pk}/', {'version': plan.version, 'action': 'approve_selected', 'next': 'home',
+                                                               'selected': [str(event.pk), str(buy.pk)]})
+        self.assertEqual(response.url, '/#assistant')
+        activity = Activity.objects.get()
+        self.assertEqual((activity.start_time.isoformat(), activity.end_time.isoformat(), activity.end_date.isoformat()), ('14:00:00', '15:00:00', '2026-10-17'))
+        self.assertEqual(list(activity.participants.all()), [self.child])
+        self.assertEqual(Task.objects.get().activity, activity)
+        self.assertContains(self.client.get('/'), 'Wrap the gift')  # still pending, still offered
+        plan.refresh_from_db()
+        rest = [str(item.pk) for item in plan.suggestions.filter(status='pending')]
+        self.client.post(f'/assistant/{plan.pk}/', {'version': plan.version, 'action': 'approve_selected', 'next': 'home', 'selected': rest})
+        page = self.client.get('/')
+        self.assertNotContains(page, 'Review in detail')
+        self.assertContains(page, 'Prepare suggestions')
+
+    def test_overview_quick_add_with_a_problem_opens_the_detailed_review(self):
+        proposal = copy.deepcopy(self.proposal)
+        proposal['event']['start_time'] = None
+        proposal['event']['end_time'] = None
+        plan = self.draft(proposal)
+        event = plan.suggestions.get(kind='event')
+        response = self.client.post(f'/assistant/{plan.pk}/', {'version': plan.version, 'action': 'approve_selected', 'next': 'home', 'selected': [str(event.pk)]})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Choose a time')
         self.assertFalse(Activity.objects.exists())

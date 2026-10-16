@@ -81,12 +81,25 @@ def quick_entry(request, task_page=False):
         return context, redirect(target)
     return context, None
 
+def quick_assistant_plan(request):
+    """This parent's latest assistant request, while it still has suggestions to add (or recently failed)."""
+    from .models import AssistantPlan
+    plan = AssistantPlan.objects.filter(household=request.household, created_by=request.user).order_by('-created_at').first()
+    if plan is None:
+        return None
+    pending = list(plan.suggestions.filter(revision=plan.revision, status='pending').order_by('position'))
+    recent = plan.updated_at > timezone.now() - timedelta(hours=1)
+    if (plan.status == 'ready' and pending) or (plan.status in ('generating', 'error') and recent):
+        return {'plan': plan, 'pending': pending, 'questions': len(plan.questions or [])}
+    return None
+
 @parent_only
 @require_http_methods(['GET', 'POST'])
 def dashboard(request):
     quick_context, response = quick_entry(request)
     quick_context['assistant_request_key'] = uuid.uuid4()
     quick_context['assistant_ready'] = bool(app_settings.OPENAI_API_KEY)
+    quick_context['quick_plan'] = quick_assistant_plan(request)
     if response is not None:
         return response
     day = chosen_date(request)
