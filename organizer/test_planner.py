@@ -200,3 +200,30 @@ class PlannerTests(TestCase):
             response = self.client.get('/settings/')
         self.assertContains(response, '<code>abcdef1</code>')
         self.assertNotContains(response, '<code>1111111</code>')
+
+    def test_default_view_is_a_rolling_five_weeks_and_week_tiles_show_more(self):
+        from datetime import time, timedelta
+        from zoneinfo import ZoneInfo
+        from django.utils import timezone
+        today = timezone.localdate(timezone=ZoneInfo(self.house.timezone))
+        monday = today - timedelta(days=today.weekday())
+        response = self.client.get('/')
+        cells = response.context['cells']
+        self.assertEqual(response.context['mode'], 'month')
+        self.assertEqual([c['date'] for c in cells], [monday + timedelta(days=i) for i in range(35)])
+        self.assertIn(today, [c['date'] for c in cells[:7]])  # today is on the top row
+        self.assertTrue(cells[0]['month_label'])
+        self.assertEqual((response.context['previous'], response.context['next']), (today - timedelta(days=28), today + timedelta(days=28)))
+        later = self.client.get('/?date=' + (today + timedelta(days=28)).isoformat())
+        self.assertEqual(later.context['cells'][0]['date'], monday + timedelta(days=28))
+        event = Activity.objects.create(household=self.house, title='Recital', start_date=today, end_date=today,
+                                        start_time=time(18), end_time=time(19, 30), location='School hall')
+        Task.objects.create(household=self.house, title='Iron the shirt', due_date=today, due_time=time(17), assignee=self.child, activity=event)
+        week = self.client.get('/?view=week')
+        self.assertContains(week, '6:00 PM–7:30 PM')
+        self.assertContains(week, 'School hall')
+        self.assertContains(week, 'For Recital')
+        month = self.client.get('/')
+        self.assertNotContains(month, '6:00 PM–7:30 PM')
+        self.assertContains(month, 'Recital')
+
