@@ -157,6 +157,13 @@ participation. No further approval is needed merely to develop reversible local 
   removed, and a clarification cannot bring back a dismissed item. Remaining: run
   assistant_eval with the owner's key and record results; same-day weekday and edit retention
   still rely on the model and are measured, not enforced.
+- [x] AI-06 Streamlined suggestion review (owner request, Claude Code, October 16): compact
+  one-line cards with a summary (date, time, people, due date, assignee, repeat) and any missing
+  details ("Needs: end time"), ticked by default; Edit details expands the form (opened
+  automatically when something is missing or invalid); reminder, search and repeat fields sit
+  under More options; one "Add N selected" button adds ticked items together, activity first so
+  tasks link to it, leaving unticked items pending. Stale reply/questions hide once items are
+  added. Approval still validates every field; nothing is added without the button.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   Saved reminder preferences are implemented but do not satisfy delivery acceptance.
 

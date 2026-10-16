@@ -114,3 +114,9 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - First deploy-cloud-run run (38930083618) failed at the migration job: the stored database URL was garbled by a double paste and key presses. The log printed the Neon password, so the owner reset it and stored a fresh direct string via the visible editor; the re-run succeeded (f28fc59). /health/ returned ok in 78 ms; manifest and service worker served.
 - Google connect first failed because the secret was the old client's (only version 1 existed); after creating a new client secret, storing it and restarting, connect succeeded. Calendars listed only after enabling the Google Calendar API in the new project.
 - Owner confirmed calendars working and switched to https://home-headquarters-140747200253.us-east4.run.app; no final copy was needed because nothing changed on Render after the copy.
+
+## Streamlined assistant review (AI-06), October 16, 2026 — Claude Code
+
+- Two new tests: Add selected adds the ticked activity before its task and links them, leaves unticked tasks pending, links a later-added task to the earlier activity, hides stale reply/questions; an empty selection is refused and a missing end time is flagged and blocks adding.
+- Local walk-through on test data: the card summary read "Sat, Oct 24 · 2:00 PM · Sam Child" with "Needs: end time" and Edit opened; unticking a task changed the button to "Add 3 selected"; three items were added and both tasks linked to the activity.
+

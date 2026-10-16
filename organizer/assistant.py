@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 from django import forms
@@ -10,7 +10,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
-from .models import AssistantPlan, AssistantSuggestion, AssistantUsage, Activity, Task, Household
+from .models import AssistantPlan, AssistantSuggestion, AssistantUsage, Activity, FamilyMember, Task, Household
 from .assistant_forms import PromptForm, ClarifyForm, EventDraftForm, TaskDraftForm, json_payload
 from .assistant_service import normalized, propose, AssistantUnavailable
 from .planner_forms import ActivityForm, TaskForm, has_family_calendar
@@ -85,6 +85,53 @@ def index(request):
     return render(request, 'assistant/index.html', {'section': 'assistant', 'form': form,
         'ready': bool(settings.OPENAI_API_KEY), 'plans': AssistantPlan.objects.filter(household=request.household).order_by('-created_at')[:30]})
 
+MORE_OPTIONS = ['reminder_minutes', 'search_prompt', 'search_questions', 'repeat', 'interval', 'weekdays', 'monthly_by', 'ends', 'until', 'count']
+REPEAT_LABELS = {'DAILY': 'Repeats daily', 'WEEKLY': 'Repeats weekly', 'MONTHLY': 'Repeats monthly', 'YEARLY': 'Repeats yearly'}
+
+def friendly_time(value):
+    try:
+        moment = datetime.strptime(value[:5], '%H:%M')
+    except (TypeError, ValueError):
+        return ''
+    return moment.strftime('%I:%M %p').lstrip('0')
+
+def friendly_date(value):
+    try:
+        day = date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return ''
+    return f"{day:%a}, {day:%b} {day.day}"
+
+def summarize(suggestion, names):
+    """One-line summary and the details still needed, for the compact review card."""
+    data = suggestion.payload or {}
+    parts, missing = [], []
+    if suggestion.kind == 'event':
+        parts.append(friendly_date(data.get('start_date')) or 'Date needed')
+        if data.get('all_day'):
+            parts.append('All day')
+        elif data.get('start_time'):
+            end = friendly_time(data.get('end_time'))
+            parts.append(friendly_time(data['start_time']) + (f'–{end}' if end else ''))
+        people = [names[ref] for ref in data.get('participants') or [] if ref in names]
+        if people:
+            parts.append(', '.join(people))
+        if not data.get('start_date'):
+            missing.append('date')
+        if not data.get('all_day') and not data.get('start_time'):
+            missing.append('start time')
+        if not data.get('all_day') and not data.get('end_time'):
+            missing.append('end time')
+    else:
+        due = friendly_date(data.get('due_date'))
+        parts.append(f'Due {due}' + (f', {friendly_time(data["due_time"])}' if data.get('due_time') else '') if due else 'No deadline')
+        parts.append(names.get(data.get('assignee') or '', 'Household'))
+        if data.get('high_priority'):
+            parts.append('High priority')
+    if data.get('repeat') in REPEAT_LABELS:
+        parts.append(REPEAT_LABELS[data['repeat']])
+    return {'summary': ' · '.join(part for part in parts if part), 'missing': missing}
+
 def review_form(suggestion, household, data=None):
     cls = EventDraftForm if suggestion.kind == 'event' else TaskDraftForm
     return cls(data, household=household, initial=suggestion.payload, prefix=str(suggestion.pk))
@@ -140,7 +187,11 @@ def detail(request, pk):
             pending = [item for item in suggestions if item.status == 'pending']
             target = next((item for item in suggestions if action.endswith(':' + str(item.pk))), None)
             # A repeated successful approval is a no-op, including after record deletion.
-            if (action == 'approve_all' and not pending) or (action.startswith('approve:') and target and target.status == 'approved'):
+            chosen = set(request.POST.getlist('selected'))
+            if action == 'approve_selected' and not chosen:
+                messages.error(request, 'Tick at least one suggestion to add.')
+                return redirect('assistant_plan', pk=pk)
+            if (action in ('approve_all', 'approve_selected') and not pending) or (action.startswith('approve:') and target and target.status == 'approved'):
                 return redirect('assistant_plan', pk=pk)
             if request.POST.get('version') != str(plan.version) or plan.status != 'ready':
                 return conflict(request)
@@ -151,7 +202,13 @@ def detail(request, pk):
                 plan.save()
                 messages.success(request, 'Suggestion dismissed. No record was created.')
                 return redirect('assistant_plan', pk=pk)
-            selected = pending if action == 'approve_all' else [target] if target and target.status == 'pending' and action.split(':')[0] in ('approve', 'save') else []
+            if action == 'approve_all':
+                selected = pending
+            elif action == 'approve_selected':
+                # Activity first (it is drafted at position 0), so tasks added with it are linked to it.
+                selected = sorted((item for item in pending if str(item.pk) in chosen), key=lambda item: item.kind != 'event')
+            else:
+                selected = [target] if target and target.status == 'pending' and action.split(':')[0] in ('approve', 'save') else []
             if not selected:
                 return HttpResponse('Choose a current suggestion.', status=400)
             valid, checks = True, {}
@@ -170,7 +227,7 @@ def detail(request, pk):
                         checks[suggestion.pk] = check
             event_suggestion = next((item for item in suggestions if item.kind == 'event'), None)
             if action.startswith('approve:') and target.kind == 'task' and event_suggestion and event_suggestion.status == 'pending':
-                bound[target.pk].add_error(None, 'Approve or dismiss the event first so this task can be linked correctly.')
+                bound[target.pk].add_error(None, 'Tick the activity too and use Add selected, so this task is linked to it.')
                 valid = False
             if valid:
                 linked = event_suggestion.activity if event_suggestion and event_suggestion.status == 'approved' else None
@@ -186,10 +243,13 @@ def detail(request, pk):
                 plan.version += 1
                 plan.save()
                 bump(household)
-                messages.success(request, 'Draft edits saved. Nothing added yet.' if action.startswith('save:') else 'Approved plans added. Reminder preferences are saved, but notifications are not enabled.')
+                added = len(selected)
+                messages.success(request, 'Draft edits saved. Nothing added yet.' if action.startswith('save:') else
+                                 f'Added {added} item{"s" if added != 1 else ""} to your plans. Reminder preferences are saved, but notifications are not enabled.')
                 return redirect('assistant_plan', pk=pk)
     rows = list(plan.suggestions.filter(revision=plan.revision).select_related('activity', 'task'))
-    review = [{'suggestion': item, 'form': bound.get(item.pk) or review_form(item, request.household)} for item in rows]
+    names = {str(member.pk): member.name for member in FamilyMember.objects.filter(household=request.household)}
+    review = [{'suggestion': item, 'form': bound.get(item.pk) or review_form(item, request.household), **summarize(item, names)} for item in rows]
     can_revise = not plan.suggestions.filter(status='approved').exists() and (plan.status != 'generating' or plan.updated_at < timezone.now() - timedelta(minutes=2))
     conflicts = []
     for item in rows:
@@ -204,8 +264,8 @@ def detail(request, pk):
             conflicts.extend(shared_events(request.household, day, day)[:10])
     return render(request, 'assistant/review.html', {'section': 'assistant', 'plan': plan, 'review': review,
         'history': plan.suggestions.exclude(revision=plan.revision).order_by('-revision', 'position'),
-        'has_pending': any(item.status == 'pending' for item in rows), 'can_revise': can_revise,
-        'clarify': ClarifyForm(initial={'version': plan.version}), 'conflicts': conflicts,
+        'has_pending': any(item.status == 'pending' for item in rows), 'has_added': any(item.status == 'approved' for item in rows), 'can_revise': can_revise,
+        'clarify': ClarifyForm(initial={'version': plan.version}), 'conflicts': conflicts, 'more_options': MORE_OPTIONS,
         'zone': request.household.timezone})
 
 @parent_only
