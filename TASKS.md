@@ -181,6 +181,13 @@ participation. No further approval is needed merely to develop reversible local 
   of open questions, "Review in detail" and "Start a new request". Owner decisions: a missing end
   time is assumed one hour after the start (capped at 11:59 PM, noted only on the detailed review, and
   end-time questions are dropped); the end date is the start date unless stated.
+- [ ] AI-09 Voice input for the assistant (owner chose the free browser option, Claude Code, October
+  16): a Speak button on the Overview tile, Assistant page and review follow-up box uses the
+  browser's speech recognition to fill the text box (live, editable; nothing is sent to the
+  assistant until the usual button). Hidden where unsupported; clear messages for blocked or
+  missing microphones. Permissions-Policy now allows the microphone for this site only (camera and
+  location stay blocked). Audio is handled by the browser (Chrome uses Google's speech service);
+  the app never receives audio. Pending: real dictation check on the owner's Android phone.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   Saved reminder preferences are implemented but do not satisfy delivery acceptance.
 

@@ -4,6 +4,16 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Voice input for the assistant
+
+- Author: Claude Code. Task: AI-09 (owner request, free browser option).
+- A Speak button next to the assistant's text boxes (Overview tile, Assistant page, review
+  follow-up) fills the box as you talk; you can edit before sending. Hidden in browsers without
+  speech recognition; friendly messages when the microphone is blocked or missing.
+- The site now allows its own pages to use the microphone (camera and location stay blocked).
+- Validation: 104 organizer tests (1 new); local check that the button appears and handles a
+  blocked microphone. Real speech needs a phone check (the test browser has no microphone).
+
 ## 2026-10-16 — Rolling five-week calendar and roomier week view
 
 - Author: Claude Code. Task: CAL-04 (owner request).

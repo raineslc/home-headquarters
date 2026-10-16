@@ -251,3 +251,14 @@ class AssistantTests(TestCase):
         self.assertContains(response, 'Choose a time')
         self.assertFalse(Activity.objects.exists())
 
+
+    def test_voice_input_is_offered_on_assistant_boxes_and_mic_allowed_for_this_site_only(self):
+        page = self.client.get('/')
+        policy = page['Permissions-Policy']
+        self.assertIn('microphone=(self)', policy)
+        self.assertIn('camera=()', policy)
+        self.assertIn('geolocation=()', policy)
+        self.assertContains(page, 'data-dictate-for="assistant-prompt" hidden')
+        self.assertContains(self.client.get('/assistant/'), 'data-dictate-for="id_prompt" hidden')
+        plan = self.draft()
+        self.assertContains(self.client.get(f'/assistant/{plan.pk}/'), 'data-dictate-for="id_answer" hidden')
