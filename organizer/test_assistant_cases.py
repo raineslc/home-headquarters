@@ -28,8 +28,9 @@ def plan(event_value=None, tasks=(), questions=()):
     return dict(reply='Model prose is replaced by the server.', questions=list(questions), event=event_value, tasks=list(tasks))
 
 BIRTHDAY_EVENT = event(title='Birthday party', start_date='2026-10-17', end_date='2026-10-17', start_time='14:00', participants=['{Logan}'])
-BIRTHDAY_TASKS = [task(title='Buy a gift', due_date='2026-10-16', search_prompt='birthday gift ideas', search_questions='Recipient age and budget?'),
-                  task(title='Wrap the gift', due_date='2026-10-16'), task(title='Confirm the party address', due_date='2026-10-15')]
+BIRTHDAY_TASKS = [task(title='Buy and wrap a gift', due_date='2026-10-16', notes='Pick a gift, then wrap it with a card.',
+                       search_prompt='birthday gift ideas', search_questions='Recipient age and budget?'),
+                  task(title='Confirm the party address', due_date='2026-10-15')]
 
 # Recorded examples of acceptable answers; each must pass every check of its case.
 GOOD = {
@@ -52,6 +53,9 @@ BAD = [
     ('birthday_recipient', 'End time is not invented (left empty and asked)', lambda p: p['event'].update(end_time='16:00')),
     ('birthday_recipient', 'Asks the recipient age and gift budget', lambda p: p.update(questions=['Whose birthday is it?'])),
     ('birthday_recipient', 'No high priority or reminders unless asked', lambda p: p['tasks'][1].update(high_priority=True)),
+    ('birthday_recipient', 'Buying and wrapping the gift are one task', lambda p: p.update(tasks=[
+        task(title='Buy a gift', due_date='2026-10-16'), task(title='Wrap the gift', due_date='2026-10-16'), task(title='Confirm the party address')])),
+    ('task_only', 'Keeps the plan to a few tasks (at most 4)', lambda p: p.update(tasks=[task(title=f'Passport step {n}') for n in range(5)])),
     ('task_only', 'Task-only request has no activity', lambda p: p.update(event=event(title='Passport'))),
     ('repeating_activity', 'Activity repeats weekly on TU until 2026-12-15', lambda p: p['event'].update(repeat=None)),
     ('repeating_task', 'A task repeats weekly on TH', lambda p: p['tasks'][0].update(repeat=weekly('FR'), due_date='2026-10-16')),

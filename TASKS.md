@@ -164,6 +164,11 @@ participation. No further approval is needed merely to develop reversible local 
   under More options; one "Add N selected" button adds ticked items together, activity first so
   tasks link to it, leaving unticked items pending. Stale reply/questions hide once items are
   added. Approval still validates every field; nothing is added without the button.
+- [ ] AI-07 Fewer, consolidated tasks (owner request, Claude Code, October 16): instructions now ask
+  for one to three tasks, combining steps one person would do together before the same deadline
+  ("Buy and wrap a gift", steps in notes). Regression checks: gift buying and wrapping are one
+  task; every case keeps at most 4 tasks. Recorded samples and known-bad samples pass in CI.
+  Pending: live assistant_eval run to measure the model's actual behavior.
 - [ ] AI-05 Schedule actual reminders only after approved records; depends on REM-01–03.
   Saved reminder preferences are implemented but do not satisfy delivery acceptance.
 

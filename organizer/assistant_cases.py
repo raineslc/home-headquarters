@@ -68,7 +68,11 @@ def no_unrequested_flags(result, ids):
     items = result['tasks'] + ([result['event']] if result['event'] else [])
     return not any(t.get('high_priority') for t in result['tasks']) and not any(i['reminder_minutes'] for i in items)
 
-COMMON = [honest_reply, no_duplicates, private_search, no_unrequested_flags]
+@check('Keeps the plan to a few tasks (at most 4)')
+def few_tasks(result, ids):
+    return len(result['tasks']) <= 4
+
+COMMON = [honest_reply, no_duplicates, private_search, no_unrequested_flags, few_tasks]
 
 def event_field(name, expected):
     @check(f'Activity {name} is {expected}')
@@ -96,10 +100,16 @@ def asks_whose_birthday(result, ids):
 def asks_age_and_budget(result, ids):
     return asks(result, r'\bage\b|\bold\b|turning') and asks(result, r'budget|spend|\$|price')
 
-@check('Proposes buying a gift, wrapping it and confirming the address')
+@check('Proposes buying and wrapping a gift, and confirming the address')
 def gift_tasks(result, ids):
     titles = ' | '.join(task_titles(result))
     return re.search(r'\b(buy|get|pick|choose|purchase)\b.*\bgift\b', titles) and 'wrap' in titles and 'address' in titles
+
+@check('Buying and wrapping the gift are one task')
+def gift_consolidated(result, ids):
+    gift = [title for title in task_titles(result) if re.search(r'\b(buy|get|pick|choose|purchase|wrap)\b', title) and 'gift' in title]
+    return len(gift) == 1 and 'wrap' in gift[0]
+
 
 @check('End time is not invented (left empty and asked)')
 def end_time_not_invented(result, ids):
@@ -165,7 +175,7 @@ BIRTHDAY = 'Logan has a birthday party Saturday at 2 PM. We need a gift.'
 CASES = [
     Case('birthday_recipient', BIRTHDAY, WEDNESDAY, COMMON + [
         event_field('start_date', '2026-10-17'), event_field('start_time', '14:00:00'), neutral_birthday_title, logan_attends,
-        gift_not_for_logan, asks_whose_birthday, asks_age_and_budget, gift_tasks, end_time_not_invented]),
+        gift_not_for_logan, asks_whose_birthday, asks_age_and_budget, gift_tasks, gift_consolidated, end_time_not_invented]),
     Case('same_day_weekday', 'Henry has a soccer game Saturday at 10 AM.', SATURDAY, COMMON + [same_day_question]),
     Case('sparse_input', 'soccer', WEDNESDAY, COMMON + [nothing_invented, asks_when]),
     Case('task_only', "Renew Henry's passport by November 30.", WEDNESDAY, COMMON + [no_event, task_due('2026-11-30')]),

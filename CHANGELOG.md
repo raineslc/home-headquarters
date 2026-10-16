@@ -4,6 +4,15 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-16 — Assistant suggests fewer, combined tasks
+
+- Author: Claude Code. Task: AI-07 (owner request).
+- The assistant is asked for one to three tasks, combining steps one person would do together
+  before the same deadline (for example "Buy and wrap a gift", with the steps in its notes).
+- New regression checks: the birthday plan has one buy-and-wrap task, and every case keeps at
+  most 4 tasks. 99 organizer tests pass locally. The model's real behavior is measured by the
+  live assistant_eval run, still pending the owner's API key.
+
 ## 2026-10-16 — Faster assistant review
 
 - Author: Claude Code. Task: AI-06 (owner request).
