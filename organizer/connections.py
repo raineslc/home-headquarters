@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 from django.conf import settings
@@ -15,6 +16,8 @@ from . import google_service as google
 from . import google_writes
 from .models import Activity, FamilyCalendar, GoogleConnection, GoogleCalendar, GoogleEvent, GooglePendingDeletion
 from .views import parent_only, limited
+
+logger = logging.getLogger('organizer.google')
 
 @parent_only
 @require_GET
@@ -106,6 +109,10 @@ def callback(request):
             google.refresh_calendars(connection, credentials.token)
             messages.success(request, 'Google connected. Choose calendars and how much to share below; new calendars are hidden until you choose.')
     except (google.GoogleUnavailable, OAuth2Error, requests.RequestException, ValueError) as error:
+        # Log only the error type and Google's short error code (for example invalid_client);
+        # never tokens, codes from the URL, or provider response bodies.
+        code = getattr(error, 'error', '') if isinstance(error, OAuth2Error) else ''
+        logger.warning('Google connection failed: %s %s', type(error).__name__, code if isinstance(code, str) and code.isidentifier() else '')
         messages.error(request, str(error) if isinstance(error, google.GoogleUnavailable) else 'Google connection could not finish. Please try again.')
     return redirect('google_connections')
 
