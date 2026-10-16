@@ -1,6 +1,7 @@
 """AI creates validated suggestions only. This module has no organizer-write tools."""
 import json
 import re
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 import requests
 from django.conf import settings
@@ -59,9 +60,11 @@ task's notes. Keep separate tasks only when the deadline or the likely person di
 Avoid extra conditional tasks, duplicate research tasks or unnecessary supplies errands.
 A task-only request has event=null.
 Use only supplied family member IDs; leave assignee null when responsibility is unknown.
-Do not invent end times, locations, ages, budgets or facts. Missing event dates/times are
-null. Missing important details should become short questions. Leave an unknown end time
-null, rather than assuming a duration. If a year is ambiguous ask for confirmation.
+Do not invent locations, ages, budgets or facts. Missing event dates/start times are null.
+Missing important details should become short questions. Leave an unknown end time null and
+do not ask about it: the app assumes one hour and the parent can change it. Set end_date to the
+start date unless the request says the activity spans several days. If a year is ambiguous
+ask for confirmation.
 If a party needs a gift, propose one task to buy and wrap the gift, and one to confirm the address.
 Interpret "[person] has a birthday party" as an ambiguous invitation/attendance statement,
 not evidence it is that person's birthday. Use the neutral event title "Birthday party"
@@ -145,6 +148,20 @@ def repeat_problem(payload, kind):
         return 'unusable'
     return None
 
+def assume_defaults(event):
+    """Owner decision (October 16): the end date is the start date unless stated, and a missing
+    end time is one hour after the start (capped at 11:59 PM so it stays on the same day)."""
+    assumed = []
+    if event.get('start_date') and not event.get('end_date'):
+        event['end_date'] = event['start_date']
+    if not event.get('all_day') and event.get('start_time') and not event.get('end_time'):
+        start = datetime.combine(date(2000, 1, 1), time.fromisoformat(event['start_time']))
+        end = start + timedelta(hours=1)
+        event['end_time'] = (end.time() if end.date() == start.date() else time(23, 59)).isoformat()
+        assumed.append('end time')
+    if assumed:
+        event['assumed'] = assumed
+
 def validate_proposal(data, household):
     check_shape(data, PLAN_SCHEMA)
     names = list(FamilyMember.objects.filter(household=household).values_list('name', flat=True))
@@ -187,6 +204,10 @@ def validate_proposal(data, household):
     # Provider prose is never evidence that an action happened. Use server-owned wording.
     event = data['event']
     if event:
+        assume_defaults(event)
+        if 'end time' in event.get('assumed', []):
+            # The parent sees "end time assumed" on the card; asking as well would be noise.
+            data['questions'] = [q for q in data['questions'] if not (re.search(r'\bend', normalized(q)) and re.search(r'\b(time|when|finish)', normalized(q)))]
         data['reply'] = 'Proposed activity: ' + event['title'] + ('. Date: ' + event['start_date'] if event['start_date'] else '. Date needs confirmation') + '. Review the activity and preparation tasks below. Nothing has been added yet.'
         missing = []
         if not event['start_date']:

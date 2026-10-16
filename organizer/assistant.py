@@ -6,8 +6,9 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from .models import AssistantPlan, AssistantSuggestion, AssistantUsage, Activity, FamilyMember, Task, Household
@@ -81,6 +82,8 @@ def index(request):
                         title=prompt[:200], messages=[{'role': 'user', 'text': prompt}])
             if not form.errors:
                 generate(plan)
+                if request.POST.get('origin') == 'home':
+                    return redirect(reverse('home') + '#assistant')
                 return redirect('assistant_plan', pk=plan.pk)
     return render(request, 'assistant/index.html', {'section': 'assistant', 'form': form,
         'ready': bool(settings.OPENAI_API_KEY), 'plans': AssistantPlan.objects.filter(household=request.household).order_by('-created_at')[:30]})
@@ -112,7 +115,8 @@ def summarize(suggestion, names):
             parts.append('All day')
         elif data.get('start_time'):
             end = friendly_time(data.get('end_time'))
-            parts.append(friendly_time(data['start_time']) + (f'–{end}' if end else ''))
+            assumed = ' (end assumed)' if 'end time' in (data.get('assumed') or []) else ''
+            parts.append(friendly_time(data['start_time']) + (f'–{end}{assumed}' if end else ''))
         people = [names[ref] for ref in data.get('participants') or [] if ref in names]
         if people:
             parts.append(', '.join(people))
@@ -131,6 +135,20 @@ def summarize(suggestion, names):
     if data.get('repeat') in REPEAT_LABELS:
         parts.append(REPEAT_LABELS[data['repeat']])
     return {'summary': ' · '.join(part for part in parts if part), 'missing': missing}
+
+def stored_data(suggestion):
+    """Form data rebuilt from a suggestion's saved draft, for approving without the edit form
+    (the Overview quick list). It is validated exactly like edited data."""
+    data = QueryDict(mutable=True)
+    for key, value in (suggestion.payload or {}).items():
+        name = f'{suggestion.pk}-{key}'
+        if value is None or value is False or value == '':
+            continue
+        if isinstance(value, list):
+            data.setlist(name, [str(item) for item in value])
+        else:
+            data[name] = 'on' if value is True else str(value)
+    return data
 
 def review_form(suggestion, household, data=None):
     cls = EventDraftForm if suggestion.kind == 'event' else TaskDraftForm
@@ -213,7 +231,8 @@ def detail(request, pk):
                 return HttpResponse('Choose a current suggestion.', status=400)
             valid, checks = True, {}
             for suggestion in selected:
-                form = review_form(suggestion, household, request.POST)
+                posted = any(key.startswith(f'{suggestion.pk}-') for key in request.POST)
+                form = review_form(suggestion, household, request.POST if posted else stored_data(suggestion))
                 bound[suggestion.pk] = form
                 if not form.is_valid():
                     valid = False
@@ -246,6 +265,8 @@ def detail(request, pk):
                 added = len(selected)
                 messages.success(request, 'Draft edits saved. Nothing added yet.' if action.startswith('save:') else
                                  f'Added {added} item{"s" if added != 1 else ""} to your plans. Reminder preferences are saved, but notifications are not enabled.')
+                if request.POST.get('next') == 'home' and not action.startswith('save:'):
+                    return redirect(reverse('home') + '#assistant')
                 return redirect('assistant_plan', pk=pk)
     rows = list(plan.suggestions.filter(revision=plan.revision).select_related('activity', 'task'))
     names = {str(member.pk): member.name for member in FamilyMember.objects.filter(household=request.household)}

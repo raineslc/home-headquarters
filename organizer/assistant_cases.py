@@ -111,9 +111,10 @@ def gift_consolidated(result, ids):
     return len(gift) == 1 and 'wrap' in gift[0]
 
 
-@check('End time is not invented (left empty and asked)')
+@check('End time is not invented by the model (the app assumes one hour)')
 def end_time_not_invented(result, ids):
-    return bool(result['event']) and result['event']['end_time'] is None and asks(result, r'end')
+    event = result['event']
+    return bool(event) and 'end time' in (event.get('assumed') or []) and not asks(result, r'\bend\b.*\btime|what time.*end')
 
 @check('Asks which date when the weekday is today')
 def same_day_question(result, ids):
