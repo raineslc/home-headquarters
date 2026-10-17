@@ -1,7 +1,7 @@
 import calendar
 import uuid
 from django.conf import settings as app_settings
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from django.contrib import messages
 from django.db import transaction
@@ -19,7 +19,8 @@ from .models import GoogleCalendar
 from .recurrence import date_after_done, dates_between, describe, describe_after_done, end_before, parse_parts, first_on_or_after, household_events, next_date, occurrence_of
 from .checklists import checklist_rows, copy_checklist
 
-TASK_FILTERS = [('all', 'All'), ('high', 'High priority'), ('week', 'Due in 7 days'), ('day', 'Due in 1 day')]
+# Overview "Tasks & chores" summary (DASH-06): each count is also a filter for the lists below.
+TASK_FILTERS = [('overdue', 'Overdue'), ('today', 'Due today'), ('week', 'Next 7 days'), ('high', 'High priority')]
 
 def chosen_date(request):
     try:
@@ -172,13 +173,19 @@ def dashboard(request):
     overdue = list(task_query.filter(completed_at__isnull=True, due_date__lt=today)) if mode == 'agenda' and start <= today <= end else []
     school_lunches = list(LunchPlan.objects.filter(household=request.household, date__range=(start, end), choice='school', child__household=request.household, child__role='child', child__archived=False).select_related('child').order_by('child__name'))
     cells = [{'date': d, 'today': d == today, 'month_label': d == days[0] or d.day == 1, 'past': d < today, 'events': [e for e in events if e.start_date <= d <= e.end_date], 'tasks': [t for t in due_tasks if t.due_date == d], 'school_lunches': [lunch for lunch in school_lunches if lunch.date == d]} for d in days]
-    # All open tasks, with quick filters; the due-date filters include anything overdue.
+    # Tasks & chores summary: counts cover both; one-off tasks and chores are listed separately.
     open_tasks = task_query.filter(completed_at__isnull=True)
-    filtered = {'all': open_tasks, 'high': open_tasks.filter(high_priority=True),
-                'week': open_tasks.filter(due_date__lte=today + timedelta(days=7)), 'day': open_tasks.filter(due_date__lte=today + timedelta(days=1))}
+    filtered = {'all': open_tasks, 'overdue': open_tasks.filter(due_date__lt=today), 'today': open_tasks.filter(due_date=today),
+                'week': open_tasks.filter(due_date__gt=today, due_date__lte=today + timedelta(days=7)), 'high': open_tasks.filter(high_priority=True)}
     task_filter = request.GET.get('tasks') if request.GET.get('tasks') in filtered else 'all'
-    priorities = filtered[task_filter].order_by('-high_priority', F('due_date').asc(nulls_last=True), F('due_time').asc(nulls_last=True), 'title')
+    chosen = filtered[task_filter]
+    priorities = chosen.filter(recurrence='').order_by('-high_priority', F('due_date').asc(nulls_last=True), F('due_time').asc(nulls_last=True), 'title')
+    chore_list = chosen.exclude(recurrence='').order_by(F('due_date').asc(nulls_last=True), F('due_time').asc(nulls_last=True), 'title')
     task_filters = [{'key': key, 'label': label, 'count': filtered[key].count(), 'active': key == task_filter} for key, label in TASK_FILTERS]
+    week_start = datetime.combine(today - timedelta(days=today.weekday()), time.min, ZoneInfo(request.household.timezone))
+    done_week = task_query.filter(completed_at__gte=week_start)
+    summary = {'tasks': priorities.count(), 'chores': chore_list.count(),
+               'tasks_done': done_week.filter(recurrence='').count(), 'chores_done': done_week.exclude(recurrence='').count()}
     today_events = household_events(request.household, today, today) + shared_events(request.household, today, today)
     today_events.sort(key=lambda event: (event.start_time.isoformat() if event.start_time else '', event.title))
     quick_context['google_calendars'] = GoogleCalendar.objects.filter(connection__household=request.household, connection__owner__membership__active=True, connection__owner__membership__household=request.household).exclude(visibility='off').select_related('connection')
@@ -186,7 +193,7 @@ def dashboard(request):
         previous, next_day = day - timedelta(days=28), day + timedelta(days=28)
     else:
         previous, next_day = day - timedelta(days=7), day + timedelta(days=7)
-    return render(request, 'planner/dashboard.html', {**quick_context, 'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'range_end': end, 'overdue': overdue, 'priorities': priorities, 'task_filters': task_filters, 'task_filter': task_filter, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
+    return render(request, 'planner/dashboard.html', {**quick_context, 'section': 'home', 'day': day, 'today': today, 'mode': mode, 'cells': cells, 'previous': previous, 'next': next_day, 'week_start': monday, 'week_end': monday + timedelta(days=6), 'range_end': end, 'overdue': overdue, 'priorities': priorities, 'chore_list': chore_list, 'summary': summary, 'task_filters': task_filters, 'task_filter': task_filter, 'today_events': today_events, 'today_tasks': task_query.filter(completed_at__isnull=True, due_date=today), 'packed': LunchPlan.objects.filter(household=request.household, date=today, choice='pack', child__archived=False).select_related('child')})
 
 @parent_only
 @require_GET

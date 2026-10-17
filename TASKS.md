@@ -114,6 +114,8 @@ participation. No further approval is needed merely to develop reversible local 
   used, UNTIL/COUNT still end it, and reopening/re-completing never adds a second next task.
   Migration 0012; export version 5 (versions 2–4 restore with the fixed-schedule default).
   Owner decisions: no rotating assignees and no seasonal months for now (kids too young; revisit).
+  The Tasks page hides chores by default (owner request) with a "Show chores (N)" toggle that
+  the Open/Completed/All filters keep.
 - [x] UX-01 Inline quick Add activity/Add task on Overview; high-priority tasks sort first.
   PostgreSQL CI 38462765334; deployed preview.
 - [x] LIST-01 Saved lists and checklists (owner request, Claude Code, October 16). Settings →
@@ -239,7 +241,7 @@ participation. No further approval is needed merely to develop reversible local 
   the chosen date (default today) with events, open due tasks (time, assignee, priority, linked
   activity; high priority first) and an Overdue list when today is in range. Week/month unchanged.
   Isolated PostgreSQL test plus local phone-width visual check; CI result reported in handoff.
-- [x] DASH-04 Overview "Task priorities" lists all open tasks (owner request, Claude Code), high
+- [x] DASH-04 (superseded by DASH-06) Overview "Task priorities" lists all open tasks (owner request, Claude Code), high
   priority first, then due date/time with undated last, with quick filters All, High priority,
   Due in 7 days and Due in 1 day (today or tomorrow). Due filters include overdue tasks; counts
   show on each filter. Server-side links work without JavaScript. Replaces the previous
@@ -247,6 +249,11 @@ participation. No further approval is needed merely to develop reversible local 
 - [x] DASH-05 Tonight's prep (Claude Code, October 16): from 5 PM household time the Overview
   shows a card for tomorrow with its plans (local and shared Google), unticked checklist items as
   "Bring:", tasks due tomorrow and packed lunches. Hidden before 5 PM.
+- [x] DASH-06 Overview "Tasks & chores" summary (owner request, Claude Code, October 17), replacing
+  the DASH-04 Task priorities tile: count tiles for Overdue, Due today, Next 7 days (tomorrow
+  through a week) and High priority across tasks and chores, each a server-side filter link;
+  "N tasks and N chores done this week" (since Monday, household time); then up to six one-off
+  tasks (high priority first) and six chores (by due date) with links to Tasks and Chores.
 - [ ] REM-01 Choose a supported delivery channel and background schedule with owner-approved
   costs; document browser/device limitations and consent. Free web sleep is not a scheduler.
   **Implemented, live setup pending (Claude Code, October 16; owner approved free Web Push and
@@ -301,14 +308,14 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: TSK-03 Chores tab and "repeat after it's done" tasks; export
-  version 5.
+- Assistant: Claude Code. Change: TSK-03 Chores tab, "repeat after it's done" tasks and chores
+  hidden on Tasks by default; DASH-06 Overview Tasks & chores summary; export version 5.
 - Starting canonical GitHub commit: `d0b4d0254ff4d1cfcc81d85bf8d3e67cea266011` (merged PR 23); branch `tsk-03-chores`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 137 organizer
-  tests passed (5 new, 4 updated for export version 5), migration drift check clean; phone-width
-  check of the Chores tab and the repeat-mode form. CI status is reported in the handoff.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 138 organizer
+  tests passed (6 new, 6 updated), migration drift check clean; phone and desktop checks of the
+  Chores tab, the repeat-mode form and the Overview summary. CI status is reported in the handoff.
 - Remaining blockers: real-phone reminder check (REM-03); live check of scheduled Google sync;
   Melissa's access; hosted recovery drill; weekly backup.
 

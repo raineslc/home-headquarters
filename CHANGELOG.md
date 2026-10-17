@@ -4,7 +4,7 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
-## 2026-10-17 — Chores
+## 2026-10-17 — Chores and the Tasks & chores summary
 
 - Author: Claude Code. Task: TSK-03 (owner request).
 - New Chores tab: every open repeating task grouped by person, with when it's due, how it
@@ -13,8 +13,13 @@ The containing Git commit identifies an entry; do not invent its own SHA before 
 - Repeating tasks can now be due "a set time after it's done" (for example, mow every week after
   the last mow), as well as on a fixed schedule.
 - Exports are version 5 (they include that choice); older exports still restore.
-- Validation: 137 organizer tests (5 new); phone-width check of the Chores tab (seven bottom
-  tabs, no sideways scroll) and of the repeat form switching modes.
+- The Tasks page hides chores by default; "Show chores (N)" brings them back.
+- The Overview's Task priorities tile is now "Tasks & chores" (DASH-06): counts for Overdue,
+  Due today, Next 7 days and High priority (each tap filters), how many tasks and chores were
+  done this week, and short Tasks and Chores lists.
+- Validation: 138 organizer tests (6 new, 6 updated); phone-width check of the Chores tab (seven
+  bottom tabs, no sideways scroll), the repeat form switching modes, and the Overview summary on
+  phone (2×2 counts, stacked lists) and desktop (one row, side-by-side lists).
 
 ## 2026-10-17 — Automatic Google Calendar sync
 
