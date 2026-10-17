@@ -138,3 +138,10 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Five isolated PostgreSQL tests: a JPEG from the Overview reaches the provider as a data URL and the saved plan holds no image data; note plus PNG; HEIC, text and oversized files and empty requests are refused before any AI call; the Responses API body carries input_text plus input_image with store false and the image-as-data instruction; both pages offer the camera button. 127 organizer tests passed.
 - Local phone-width (375px) check: the button sits under Speak; a 4000×3000 PNG (300 KB) chosen in the browser became flyer.jpg, 36 KB, 1600 px wide before upload; no sideways scroll.
 - Not yet verified: a real flyer read by the live model (needs the hosted API key and credit).
+
+## Hosted reminder schedule (REM-03), October 17, 2026 — owner with Claude Code
+
+- Owner ran deploy/reminders-setup.sh in Cloud Shell. Its immediate status read -1 because it checked before the first run finished.
+- Cloud Run request log for /jobs/reminders/: 200 at 14:45:04, 15:00:04 and 15:07:22 UTC. Scheduler job hhq-reminders: ENABLED, status {} (success), next run 15:15 UTC.
+- From outside, POST /jobs/reminders/ without a token or with a fake token returns 403.
+- Pending: real-phone delivery with the app closed, and no duplicates.

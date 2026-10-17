@@ -4,6 +4,15 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-17 — Reminder schedule verified
+
+- Author: Claude Code. Task: REM-03 (partial).
+- The owner ran deploy/reminders-setup.sh. Cloud Scheduler's calls to the live app were all
+  answered 200 (14:45, 15:00 and 15:07 UTC), so the signed-token check and schedule work.
+- The setup script showed a confusing -1 because it checked before the first run finished. It
+  now waits for the run and prints "Success" or the failing status with a log command.
+- Pending: a real notification on the owner's Android phone with the app closed.
+
 ## 2026-10-16 — Snap a flyer
 
 - Author: Claude Code. Task: AI-10 (owner request).
