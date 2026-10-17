@@ -145,11 +145,11 @@ recorded samples, and `manage.py assistant_eval` runs them live in a rolled-back
 
 ## Recovery and release limitations
 
-Exports use format home-headquarters, version 4, scope household: notes, family members,
+Exports use format home-headquarters, version 5, scope household: notes, family members,
 activities with participants, recurrence (series, exdates, changed occurrences) and checklists,
 tasks with recurrence and checklists, lunch plans, assistant plans with suggestions, and saved
-lists. Version 2 files are upgraded with non-repeating defaults and version 2/3 files with empty
-checklists and lists on restore; series keys are regenerated so restores never collide.
+lists. Version 2 files are upgraded with non-repeating defaults, version 2/3 files with empty
+checklists and lists, and version 2–4 tasks with repeat_after_done false on restore; series keys are regenerated so restores never collide.
 Accounts, memberships, invitations, Google connections/tokens/event caches, usage counters
 and recovery points are never exported; plan/suggestion authors appear as parent emails.
 Restore validates every field (model validation) and cross-reference before writing, stores

@@ -172,16 +172,26 @@ class PlannerTests(TestCase):
         def shown(key=None):
             response = self.client.get('/' + (f'?tasks={key}' if key else ''))
             return response, list(response.context['priorities'])
+        import uuid
+        chore = Task.objects.create(household=self.house, title='Laundry', due_date=today, recurrence='FREQ=DAILY',
+                                    recurrence_start=today, series_key=uuid.uuid4())
         response, everything = shown()
         self.assertEqual(everything, [urgent_later, urgent_undated, overdue, today_task, tomorrow, week, later, undated])
-        self.assertEqual({f['key']: f['count'] for f in response.context['task_filters']}, {'all': 8, 'high': 2, 'week': 4, 'day': 3})
-        self.assertContains(response, 'Task priorities')
+        self.assertEqual(list(response.context['chore_list']), [chore])
+        # Counts cover tasks and chores; buckets don't overlap except high priority.
+        self.assertEqual({f['key']: f['count'] for f in response.context['task_filters']}, {'overdue': 1, 'today': 2, 'week': 2, 'high': 2})
+        self.assertEqual(response.context['summary'], {'tasks': 8, 'chores': 1, 'tasks_done': 1, 'chores_done': 0})
+        self.assertContains(response, 'Tasks &amp; chores')
+        self.assertContains(response, '1 task and 0 chores done this week')
         self.assertEqual(shown('high')[1], [urgent_later, urgent_undated])
-        self.assertEqual(shown('week')[1], [overdue, today_task, tomorrow, week])
-        self.assertEqual(shown('day')[1], [overdue, today_task, tomorrow])
+        self.assertEqual(shown('overdue')[1], [overdue])
+        self.assertEqual(shown('week')[1], [tomorrow, week])
+        response, listed = shown('today')
+        self.assertEqual((listed, list(response.context['chore_list'])), ([today_task], [chore]))
+        self.assertContains(response, 'Showing due today')
         self.assertEqual(shown('bogus')[0].context['task_filter'], 'all')
         Task.objects.filter(household=self.house).update(completed_at=timezone.now())
-        self.assertContains(self.client.get('/?tasks=day'), 'Nothing due today or tomorrow')
+        self.assertContains(self.client.get('/?tasks=today'), 'No tasks here.')
 
 
     def test_settings_shows_the_running_version(self):

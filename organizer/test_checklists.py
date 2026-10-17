@@ -91,7 +91,7 @@ class ChecklistTests(TestCase):
         self.act('task', task, action='template', template=str(self.template.pk))
         towel = task.checklist_items.get(text='Towel')
         self.act('task', task, action='done', item=str(towel.pk))
-        self.assertContains(self.client.get('/tasks/'), '☑ 1/3')
+        self.assertContains(self.client.get('/tasks/?chores=show'), '☑ 1/3')
         self.assertContains(self.client.get(f'/plan/task/{task.pk}/edit/'), 'Goggles')
         self.client.post(f'/tasks/{task.pk}/complete/', {'version': task.version})
         following = Task.objects.get(series_key=task.series_key, due_date=date(2026, 10, 26))
@@ -124,12 +124,12 @@ class ChecklistTests(TestCase):
     def test_version_three_exports_restore_without_lists(self):
         ChecklistItem.objects.create(household=self.house, activity=self.party, text='Card')
         exported = snapshot(self.house)
-        self.assertEqual(exported['version'], 4)
+        self.assertEqual(exported['version'], 5)
         self.assertEqual(exported['list_templates'], [{'name': 'Swim bag', 'items': ['Towel', 'Goggles', 'Snack']}])
         old = dict(exported, version=3)
         del old['list_templates']
         old['activities'] = [{k: v for k, v in row.items() if k != 'checklist'} for row in exported['activities']]
-        old['tasks'] = [{k: v for k, v in row.items() if k != 'checklist'} for row in exported['tasks']]
+        old['tasks'] = [{k: v for k, v in row.items() if k not in ('checklist', 'repeat_after_done')} for row in exported['tasks']]
         self.client.force_login(self.outsider)
         upload = SimpleUploadedFile('household.json', json.dumps(old).encode(), content_type='application/json')
         self.assertContains(self.client.post('/foundation/restore/', {'action': 'preview', 'backup': upload}), '0 saved lists')

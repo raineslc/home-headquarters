@@ -207,7 +207,8 @@ class HouseholdRecoveryTests(TestCase):
             mutate(['assistant_plans', 0, 'suggestions', 0, 'task'], str(uuid.uuid4())),
             mutate(['assistant_plans', 0, 'suggestions', 0, 'kind'], 'email'),
             mutate(['notes'], [{'title': ''}]),
-            mutate(['version'], 5),
+            mutate(['version'], 6),
+            mutate(['tasks', gift, 'repeat_after_done'], 'yes'),
             mutate(['list_templates', 0, 'items'], []),
             mutate(['list_templates', 0, 'name'], ''),
             mutate(['activities', party, 'checklist', 0, 'text'], ''),
@@ -268,7 +269,7 @@ class HouseholdRecoveryTests(TestCase):
         self.apply()
         self.assertEqual(list(SetupRecord.objects.filter(household=self.house).values_list('title', flat=True)), ['Old note'])
         self.assertEqual(Task.objects.filter(household=self.house).count(), 2)
-        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 4)
+        self.assertEqual(RecoveryPoint.objects.get().payload['version'], 5)
 
     def test_export_household_command(self):
         with tempfile.TemporaryDirectory() as folder:
