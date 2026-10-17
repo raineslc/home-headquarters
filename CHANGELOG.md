@@ -4,6 +4,19 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-17 — Automatic Google Calendar sync
+
+- Author: Claude Code. Task: GGL-04 (owner request).
+- Shared Google calendars now refresh automatically every 15 minutes from 6 AM to 11 PM, even
+  with the app closed, using the existing reminder schedule (no new cost or scheduler job).
+  Sync now still refreshes immediately and picks up newly added calendars.
+- Failed family-calendar updates and pending Google removals are retried on each run.
+- If a Google sign-in expires, the account is no longer retried and the Overview shows
+  "Your Google Calendar connection has expired… Reconnect Google".
+- Validation: 132 organizer tests (5 new: shared-only refresh without changing form versions,
+  expired sign-in skipped and shown, retries skip conflicts, scheduler run survives Google
+  errors, connections page wording).
+
 ## 2026-10-17 — Reminder schedule verified
 
 - Author: Claude Code. Task: REM-03 (partial).

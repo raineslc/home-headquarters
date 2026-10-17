@@ -145,3 +145,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Cloud Run request log for /jobs/reminders/: 200 at 14:45:04, 15:00:04 and 15:07:22 UTC. Scheduler job hhq-reminders: ENABLED, status {} (success), next run 15:15 UTC.
 - From outside, POST /jobs/reminders/ without a token or with a fake token returns 403.
 - Pending: real-phone delivery with the app closed, and no duplicates.
+
+## Scheduled Google Calendar sync (GGL-04), October 17, 2026 — Claude Code
+
+- Five isolated PostgreSQL tests with Google mocked: only shared calendars are read; a second run within 10 minutes skips; a later run refreshes; the connection version is unchanged; an expired sign-in records the error, is skipped afterwards and shows the Overview notice until reconnected; failed updates and pending removals retry while conflicts don't; the scheduler call returns 200 with reminder results even if Google sync raises. 132 organizer tests passed.
+- Not yet verified on the live site: a change made in Google appearing without Sync now.

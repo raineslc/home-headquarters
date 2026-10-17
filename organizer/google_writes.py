@@ -205,6 +205,16 @@ def retry_deletions(household):
         done += remove_remote(pending.calendar, pending.event_id, pending.title)
     return done
 
+def retry_failed():
+    """Scheduled retries (GGL-04): pending Google removals and activities whose update failed.
+    Conflicts and events deleted in Google wait for a parent's choice and are never retried."""
+    done = 0
+    for pending in GooglePendingDeletion.objects.select_related('calendar__connection').filter(calendar__connection__needs_reconnect=False)[:50]:
+        done += remove_remote(pending.calendar, pending.event_id, pending.title)
+    for activity in Activity.objects.filter(google_sync=True, google_state='failed').select_related('household', 'google_calendar__connection')[:50]:
+        done += push(activity) == 'synced'
+    return done
+
 def push_later(pk):
     def run():
         activity = Activity.objects.filter(pk=pk).select_related('household', 'google_calendar__connection').first()

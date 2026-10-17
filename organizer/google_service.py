@@ -181,11 +181,14 @@ def sync_calendar(calendar, token=None):
         current.window_start, current.window_end, current.sync_error = lower, upper - timedelta(days=1), ''
         current.save(update_fields=['last_synced', 'window_start', 'window_end', 'sync_error'])
 
-def sync_connection(connection):
+def sync_connection(connection, bump=True):
+    """Sync the connection's shared calendars. Sync now bumps the version so an older sync in
+    progress cannot overwrite it; scheduled syncs don't, so a parent's open form stays current."""
     with transaction.atomic():
         connection = GoogleConnection.objects.select_for_update().select_related('household').get(pk=connection.pk)
-        connection.version += 1
-        connection.save(update_fields=['version'])
+        if bump:
+            connection.version += 1
+            connection.save(update_fields=['version'])
     token = access_token(connection)
     for calendar in connection.calendars.exclude(visibility='off'):
         try:
@@ -193,6 +196,27 @@ def sync_connection(connection):
         except GoogleUnavailable as error:
             GoogleCalendar.objects.filter(pk=calendar.pk).update(sync_error=str(error))
             raise
+
+# Scheduled sync (GGL-04) runs with the reminder schedule (every 15 minutes, 6 AM to 11 PM).
+SYNC_EVERY = timedelta(minutes=10)
+
+def sync_due(now=None):
+    """Refresh every connected account's shared calendars that weren't synced in the last few
+    minutes. Accounts that need reconnecting are skipped (the Overview asks the parent)."""
+    now = now or timezone.now()
+    synced = failed = 0
+    for connection in GoogleConnection.objects.filter(needs_reconnect=False).select_related('household'):
+        calendars = list(connection.calendars.exclude(visibility='off'))
+        if not calendars or all(c.last_synced and c.last_synced > now - SYNC_EVERY for c in calendars):
+            continue
+        try:
+            sync_connection(connection, bump=False)
+            synced += 1
+        except GoogleUnavailable as error:
+            # sync_connection records calendar errors; record sign-in errors on every calendar.
+            GoogleCalendar.objects.filter(pk__in=[c.pk for c in calendars], sync_error='').update(sync_error=str(error)[:255])
+            failed += 1
+    return {'synced': synced, 'failed': failed}
 
 def shared_events(household, start, end):
     rows = GoogleEvent.objects.filter(calendar__connection__household=household,

@@ -135,13 +135,29 @@ def scheduler_identity(request):
     email = (claims.get('email') or '').lower()
     return email if claims.get('email_verified') and email == settings.JOB_INVOKER_EMAIL else None
 
+def google_due():
+    """Scheduled Google Calendar sync and write retries (GGL-04). Never stops the reminder run."""
+    from . import google_service, google_writes
+    if not google_service.configured():
+        return {'synced': 0, 'failed': 0, 'retried': 0}
+    try:
+        result = google_service.sync_due()
+        result['retried'] = google_writes.retry_failed()
+    except Exception:  # noqa: BLE001 - reminders already went out; report and carry on
+        log.exception('Scheduled Google sync failed')
+        return {'synced': 0, 'failed': 1, 'retried': 0}
+    return result
+
 @csrf_exempt
 @require_POST
 def reminders_job(request):
+    """Cloud Scheduler's call: send due reminders first, then refresh Google calendars."""
     if scheduler_identity(request) is None:
         return HttpResponse('Not allowed.', status=403)
     result = send_due()
     log.warning('Reminder run: %(sent)s sent, %(failed)s failed', result)
+    result['google'] = google_due()
+    log.warning('Google sync run: %(synced)s synced, %(failed)s failed, %(retried)s retried', result['google'])
     return JsonResponse(result)
 
 def device_label(request):
