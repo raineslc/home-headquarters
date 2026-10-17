@@ -288,7 +288,7 @@ class RecurrenceRecoveryTests(TestCase):
 
     def test_series_overrides_and_repeating_tasks_round_trip_into_a_separate_household(self):
         exported = snapshot(self.house)
-        self.assertEqual(exported['version'], 4)
+        self.assertEqual(exported['version'], 5)
         self.restore(self.outsider, exported)
         series = Activity.objects.get(household=self.other, series__isnull=True)
         override = Activity.objects.get(household=self.other, series__isnull=False)

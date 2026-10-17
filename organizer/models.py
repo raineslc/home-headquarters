@@ -127,6 +127,8 @@ class Task(models.Model):
     recurrence = models.CharField(max_length=300, blank=True)
     recurrence_start = models.DateField(null=True, blank=True)
     series_key = models.UUIDField(null=True, blank=True)
+    # When set, the next task is due the rule's interval after the day it was completed (TSK-03).
+    repeat_after_done = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-high_priority', 'due_date', 'title']

@@ -14,6 +14,7 @@ def has_family_calendar(household):
 REPEATS = [('', 'Does not repeat'), ('DAILY', 'Daily'), ('WEEKLY', 'Weekly'), ('MONTHLY', 'Monthly'), ('YEARLY', 'Yearly')]
 
 REPEAT_NAMES = ['repeat', 'interval', 'weekdays', 'monthly_by', 'ends', 'until', 'count']
+REPEAT_MODES = [('schedule', 'On a schedule (same days each time)'), ('after', 'A set time after it’s done')]
 
 def add_repeat_fields(form, rule):
     """Structured repeat controls; the form builds and validates an RRULE from them."""
@@ -144,6 +145,13 @@ class TaskForm(VersionForm):
         self.repeat = repeat
         if repeat:
             add_repeat_fields(self, self.instance.recurrence)
+            # Tasks can also repeat a set time after they're done (chores like mowing).
+            mode = forms.ChoiceField(choices=REPEAT_MODES, initial='after' if self.instance.repeat_after_done else 'schedule',
+                                     required=False, widget=forms.RadioSelect, label='Next one is due')
+            fields = list(self.fields.items())
+            position = [name for name, _ in fields].index('repeat') + 1
+            self.fields = dict(fields[:position] + [('repeat_mode', mode)] + fields[position:])
+            self.repeat_names = REPEAT_NAMES + ['repeat_mode']
         self.fields['assignee'].queryset = FamilyMember.objects.filter(household=household).filter(Q(archived=False) | Q(pk=self.instance.assignee_id)).order_by('name')
         self.fields['assignee'].empty_label = 'Household'
         if 'activity' in self.fields:
@@ -161,6 +169,9 @@ class TaskForm(VersionForm):
         if data.get('reminder_minutes') and not data.get('due_date'):
             self.add_error('due_date', 'Choose a deadline to save a reminder preference.')
         if self.repeat:
+            if data.get('repeat_mode') == 'after':
+                # Weekdays and monthly patterns don't apply; the interval counts from completion.
+                data['weekdays'], data['monthly_by'] = [], 'day'
             data['recurrence'] = clean_repeat(self, data, data.get('due_date'), 'due_date')
         return data
 
@@ -173,6 +184,7 @@ class TaskForm(VersionForm):
                 self.instance.series_key = uuid.uuid4()
             elif not rule:
                 self.instance.recurrence_start = self.instance.series_key = None
+            self.instance.repeat_after_done = bool(rule) and self.cleaned_data.get('repeat_mode') == 'after'
             self.instance.recurrence = rule
         return super().save(commit)
 

@@ -105,6 +105,15 @@ participation. No further approval is needed merely to develop reversible local 
   (Claude Code). A repeating task needs a due date; completing it creates the next due date once
   (series key + due date unique; reopen/re-complete cannot duplicate). Delete offers skip-to-next or
   stop. Changing the rule starts a new series. Only the current task exists; future ones are not shown.
+- [x] TSK-03 Chores (owner request, Claude Code, October 17): a Chores tab (bottom bar on
+  phones) lists open repeating tasks grouped by person (Household first) with due labels
+  (Overdue, Today, weekday, date), the repeat pattern, checklist progress, one-tap complete that
+  stays on Chores, "+ Add a chore" (weekly, due today) and a "Done in the last 7 days" list.
+  Tasks can now repeat "a set time after it's done": the next due date is the interval after the
+  completion day (never on or before the current due date), weekdays/monthly patterns are not
+  used, UNTIL/COUNT still end it, and reopening/re-completing never adds a second next task.
+  Migration 0012; export version 5 (versions 2–4 restore with the fixed-schedule default).
+  Owner decisions: no rotating assignees and no seasonal months for now (kids too young; revisit).
 - [x] UX-01 Inline quick Add activity/Add task on Overview; high-priority tasks sort first.
   PostgreSQL CI 38462765334; deployed preview.
 - [x] LIST-01 Saved lists and checklists (owner request, Claude Code, October 16). Settings →
@@ -292,16 +301,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: GGL-04 scheduled Google Calendar sync and write retries on the
-  existing reminder schedule (owner request).
-- Starting canonical GitHub commit: `5881936f1546b02d9716044c968da59df4406d1d` (merged PR 22); branch `ggl-04-scheduled-sync`.
+- Assistant: Claude Code. Change: TSK-03 Chores tab and "repeat after it's done" tasks; export
+  version 5.
+- Starting canonical GitHub commit: `d0b4d0254ff4d1cfcc81d85bf8d3e67cea266011` (merged PR 23); branch `tsk-03-chores`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 132 organizer
-  tests passed (5 new), migration drift check clean. CI status for the pushed branch is reported
-  in the handoff.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 137 organizer
+  tests passed (5 new, 4 updated for export version 5), migration drift check clean; phone-width
+  check of the Chores tab and the repeat-mode form. CI status is reported in the handoff.
 - Remaining blockers: real-phone reminder check (REM-03); live check of scheduled Google sync;
-  Google sign-in publishing decision; Melissa's access; hosted recovery drill; weekly backup.
+  Melissa's access; hosted recovery drill; weekly backup.
 
 ## Deferred until first release works
 

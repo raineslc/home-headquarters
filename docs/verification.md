@@ -150,3 +150,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 
 - Five isolated PostgreSQL tests with Google mocked: only shared calendars are read; a second run within 10 minutes skips; a later run refreshes; the connection version is unchanged; an expired sign-in records the error, is skipped afterwards and shows the Overview notice until reconnected; failed updates and pending removals retry while conflicts don't; the scheduler call returns 200 with reminder results even if Google sync raises. 132 organizer tests passed.
 - Not yet verified on the live site: a change made in Google appearing without Sync now.
+
+## Chores (TSK-03), October 17, 2026 — Claude Code
+
+- Five isolated PostgreSQL tests: a late completion sets the next due date from the completion day, once (re-completing returns the same next task); fixed schedules unchanged; early completion never due before the day after the current due date; 3-monthly interval; UNTIL and COUNT end the series; the form saves after-done mode ignoring weekdays and switches back; Chores groups Household before people, hides one-off tasks and other households, completes in place and lists recent completions; empty state and navigation. 137 organizer tests passed.
+- Local phone-width (375px) check with sample chores: seven bottom tabs fit, no sideways scroll; on the edit form, weekdays hide in after-done mode and return for a schedule.

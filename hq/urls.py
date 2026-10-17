@@ -54,6 +54,7 @@ urlpatterns = [
     path('plan/<str:kind>/<uuid:pk>/edit/', planner.edit, name='plan_edit'),
     path('plan/<str:kind>/<uuid:pk>/remove/', planner.remove, name='plan_remove'),
     path('tasks/<uuid:pk>/complete/', planner.complete, name='complete'),
+    path('chores/', planner.chores, name='chores'),
     path('foundation/', views.home, name='foundation'),
     path('foundation/records/', views.records, name='records'),
     path('foundation/export/', views.export, name='export'),

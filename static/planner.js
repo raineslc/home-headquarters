@@ -33,10 +33,12 @@ document.querySelectorAll('[data-repeat]').forEach(group => {
   const update = () => {
     const repeat = value('repeat');
     const ends = value('ends');
+    const mode = group.querySelector('[name="repeat_mode"]:checked');
+    const afterDone = mode && mode.value === 'after';
     group.querySelectorAll('[data-repeat-field]').forEach(row => {
       const name = row.dataset.repeatField;
-      row.hidden = name !== 'repeat' && (!repeat || (name === 'weekdays' && repeat !== 'WEEKLY') ||
-        (name === 'monthly_by' && repeat !== 'MONTHLY') || (name === 'until' && ends !== 'until') || (name === 'count' && ends !== 'count'));
+      row.hidden = name !== 'repeat' && (!repeat || (name === 'weekdays' && (repeat !== 'WEEKLY' || afterDone)) ||
+        (name === 'monthly_by' && (repeat !== 'MONTHLY' || afterDone)) || (name === 'until' && ends !== 'until') || (name === 'count' && ends !== 'count'));
     });
   };
   group.addEventListener('change', update);

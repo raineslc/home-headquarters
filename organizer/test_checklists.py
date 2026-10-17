@@ -124,12 +124,12 @@ class ChecklistTests(TestCase):
     def test_version_three_exports_restore_without_lists(self):
         ChecklistItem.objects.create(household=self.house, activity=self.party, text='Card')
         exported = snapshot(self.house)
-        self.assertEqual(exported['version'], 4)
+        self.assertEqual(exported['version'], 5)
         self.assertEqual(exported['list_templates'], [{'name': 'Swim bag', 'items': ['Towel', 'Goggles', 'Snack']}])
         old = dict(exported, version=3)
         del old['list_templates']
         old['activities'] = [{k: v for k, v in row.items() if k != 'checklist'} for row in exported['activities']]
-        old['tasks'] = [{k: v for k, v in row.items() if k != 'checklist'} for row in exported['tasks']]
+        old['tasks'] = [{k: v for k, v in row.items() if k not in ('checklist', 'repeat_after_done')} for row in exported['tasks']]
         self.client.force_login(self.outsider)
         upload = SimpleUploadedFile('household.json', json.dumps(old).encode(), content_type='application/json')
         self.assertContains(self.client.post('/foundation/restore/', {'action': 'preview', 'backup': upload}), '0 saved lists')

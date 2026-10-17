@@ -23,7 +23,8 @@ COLLECTIONS = {
     'tasks': {'id': str, 'title': str, 'high_priority': bool, 'assignee': (str, type(None)), 'activity': (str, type(None)),
               'due_date': (str, type(None)), 'due_time': (str, type(None)), 'notes': str, 'completed_at': (str, type(None)),
               'reminder_minutes': (int, type(None)), 'search_prompt': str, 'search_questions': str, 'recurrence': str,
-              'recurrence_start': (str, type(None)), 'series_key': (str, type(None)), 'checklist': list},
+              'recurrence_start': (str, type(None)), 'series_key': (str, type(None)), 'checklist': list,
+              'repeat_after_done': bool},
     'lunches': {'child': str, 'date': str, 'choice': str},
     'assistant_plans': {'id': str, 'title': str, 'created_by': (str, type(None)), 'messages': list, 'reply': str,
                         'questions': list, 'status': str, 'error': str, 'revision': int, 'created_at': str,
@@ -49,7 +50,7 @@ def snapshot(household):
     tasks = Task.objects.filter(household=household).prefetch_related('checklist_items').order_by('due_date', 'title', 'id')
     plans = AssistantPlan.objects.filter(household=household).select_related('created_by').prefetch_related('suggestions__decided_by').order_by('created_at', 'id')
     return {
-        'format': FORMAT, 'version': 4, 'scope': 'household', 'exported_at': timezone.now().isoformat(),
+        'format': FORMAT, 'version': 5, 'scope': 'household', 'exported_at': timezone.now().isoformat(),
         'household': {'name': household.name, 'timezone': household.timezone},
         'notes': [{'title': x.title, 'created_at': iso(x.created_at)} for x in SetupRecord.objects.filter(household=household).order_by('created_at', 'id')],
         'members': [{'id': str(x.id), 'name': x.name, 'role': x.role, 'color': x.color, 'archived': x.archived} for x in members],
@@ -66,7 +67,7 @@ def snapshot(household):
             'due_date': iso(x.due_date), 'due_time': iso(x.due_time), 'notes': x.notes, 'completed_at': iso(x.completed_at),
             'reminder_minutes': x.reminder_minutes, 'search_prompt': x.search_prompt, 'search_questions': x.search_questions,
             'recurrence': x.recurrence, 'recurrence_start': iso(x.recurrence_start), 'series_key': str(x.series_key) if x.series_key else None,
-            'checklist': checklist(x)} for x in tasks],
+            'checklist': checklist(x), 'repeat_after_done': x.repeat_after_done} for x in tasks],
         'lunches': [{'child': str(x.child_id), 'date': iso(x.date), 'choice': x.choice}
                     for x in LunchPlan.objects.filter(household=household).order_by('date', 'child_id')],
         'assistant_plans': [{
@@ -118,7 +119,7 @@ def validate_header(data):
     if not isinstance(data, dict) or data.get('format') != FORMAT:
         raise ValidationError('This is not a supported household export.')
     version = data.get('version')
-    if type(version) is not int or version not in (1, 2, 3, 4):
+    if type(version) is not int or version not in (1, 2, 3, 4, 5):
         raise ValidationError('This export version is not supported.')
     household = data.get('household')
     if not isinstance(household, dict) or set(household) != {'name', 'timezone'}:
@@ -147,29 +148,34 @@ def validate_snapshot(data):
     return data['records']
 
 def upgrade(data):
-    """Return a version 4 copy of a version 2 or 3 export; other data is returned unchanged."""
-    if not isinstance(data, dict) or data.get('version') not in (2, 3):
+    """Return a version 5 copy of a version 2, 3 or 4 export; other data is returned unchanged."""
+    if not isinstance(data, dict) or data.get('version') not in (2, 3, 4):
         return data
     if data['version'] == 2:
         data = dict(data, version=3)
         for name, defaults in V2_DEFAULTS.items():
             if isinstance(data.get(name), list):
                 data[name] = [defaults | row if isinstance(row, dict) and not set(defaults) & set(row) else row for row in data[name]]
-    # Version 3 predates saved lists and checklists.
-    data = dict(data, version=4)
-    for name in ('activities', 'tasks'):
-        if isinstance(data.get(name), list):
-            data[name] = [dict(row, checklist=[]) if isinstance(row, dict) and 'checklist' not in row else row for row in data[name]]
-    data.setdefault('list_templates', [])
+    if data['version'] == 3:
+        # Version 3 predates saved lists and checklists.
+        data = dict(data, version=4)
+        for name in ('activities', 'tasks'):
+            if isinstance(data.get(name), list):
+                data[name] = [dict(row, checklist=[]) if isinstance(row, dict) and 'checklist' not in row else row for row in data[name]]
+        data.setdefault('list_templates', [])
+    # Version 4 predates repeating a set time after a task is done.
+    data = dict(data, version=5)
+    if isinstance(data.get('tasks'), list):
+        data['tasks'] = [dict(row, repeat_after_done=False) if isinstance(row, dict) and 'repeat_after_done' not in row else row for row in data['tasks']]
     return data
 
 def validate_household(data):
-    """Validate a version 2, 3 or 4 export completely, including every cross-reference, before any write.
+    """Validate a version 2 to 5 export completely, including every cross-reference, before any write.
 
-    Returns the export upgraded to version 4."""
+    Returns the export upgraded to version 5."""
     version = validate_header(data)
     data = upgrade(data)
-    if version not in (2, 3, 4) or set(data) != {'format', 'version', 'scope', 'exported_at', 'household', *COLLECTIONS} or data['scope'] != 'household':
+    if version not in (2, 3, 4, 5) or set(data) != {'format', 'version', 'scope', 'exported_at', 'household', *COLLECTIONS} or data['scope'] != 'household':
         raise ValidationError('This is not a supported household export.')
     for name, spec in COLLECTIONS.items():
         if not isinstance(data[name], list) or len(data[name]) > MAX_ROWS:

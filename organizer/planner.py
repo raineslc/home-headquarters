@@ -16,7 +16,7 @@ from .planner_forms import ActivityForm, BulkActivityForm, MemberForm, TaskForm,
 from .views import parent_only
 from .google_service import shared_events
 from .models import GoogleCalendar
-from .recurrence import dates_between, describe, end_before, first_on_or_after, household_events, next_date, occurrence_of
+from .recurrence import date_after_done, dates_between, describe, describe_after_done, end_before, parse_parts, first_on_or_after, household_events, next_date, occurrence_of
 from .checklists import checklist_rows, copy_checklist
 
 TASK_FILTERS = [('all', 'All'), ('high', 'High priority'), ('week', 'Due in 7 days'), ('day', 'Due in 1 day')]
@@ -102,6 +102,30 @@ def tonights_prep(request):
     tasks = list(Task.objects.filter(household=request.household, completed_at__isnull=True, due_date=tomorrow).select_related('assignee'))
     packed = list(LunchPlan.objects.filter(household=request.household, date=tomorrow, choice='pack', child__archived=False).select_related('child'))
     return {'day': tomorrow, 'events': events, 'tasks': tasks, 'packed': packed, 'bring': list(dict.fromkeys(bring))}
+
+def repeat_text(task):
+    if not task.recurrence:
+        return ''
+    return describe_after_done(task.recurrence) if task.repeat_after_done else describe(task.recurrence, task.recurrence_start or task.due_date)
+
+@parent_only
+@require_GET
+def chores(request):
+    """Repeating household routines grouped by person (TSK-03)."""
+    today = timezone.localdate(timezone=ZoneInfo(request.household.timezone))
+    open_chores = list(Task.objects.filter(household=request.household, completed_at__isnull=True).exclude(recurrence='')
+                       .select_related('assignee').order_by('due_date', 'due_time', 'title'))
+    groups = {}
+    for task in open_chores:
+        task.repeats = repeat_text(task)
+        groups.setdefault(task.assignee, []).append(task)
+    # Household (no one assigned) first, then people by name.
+    ordered = sorted(groups.items(), key=lambda pair: (pair[0] is not None, pair[0].name if pair[0] else ''))
+    since = timezone.now() - timedelta(days=7)
+    done = (Task.objects.filter(household=request.household, completed_at__gte=since).exclude(recurrence='')
+            .select_related('assignee').order_by('-completed_at')[:30])
+    return render(request, 'planner/chores.html', {'section': 'chores', 'groups': ordered, 'done': done, 'today': today,
+                                                   'week_end': today + timedelta(days=6), 'count': len(open_chores)})
 
 def quick_assistant_plan(request):
     """This parent's latest assistant request, while it still has suggestions to add (or recently failed)."""
@@ -219,18 +243,28 @@ def requested_occurrence(request, series):
 def shift_dates(values, delta):
     return [(date.fromisoformat(value) + delta).isoformat() for value in values]
 
-def next_task(task):
+def next_task(task, done_on=None):
     """Create the following task in a repeating series once; returns it, or None when the series ended."""
     if not (task.recurrence and task.series_key and task.recurrence_start and task.due_date):
         return None
-    due = next_date(task.recurrence, task.recurrence_start, task.due_date)
+    if task.repeat_after_done:
+        # Reopening and completing again on another day must not add a second next task.
+        existing = Task.objects.filter(series_key=task.series_key, due_date__gt=task.due_date).order_by('due_date').first()
+        if existing:
+            return existing
+        count = parse_parts(task.recurrence).get('COUNT')
+        if count and Task.objects.filter(series_key=task.series_key).count() >= int(count):
+            return None
+        due = date_after_done(task.recurrence, done_on or timezone.localdate(timezone=ZoneInfo(task.household.timezone)), task.due_date)
+    else:
+        due = next_date(task.recurrence, task.recurrence_start, task.due_date)
     if due is None:
         return None
     following, created = Task.objects.get_or_create(series_key=task.series_key, due_date=due, defaults={
         'household': task.household, 'title': task.title, 'high_priority': task.high_priority, 'assignee': task.assignee,
         'activity': task.activity, 'due_time': task.due_time, 'notes': task.notes, 'reminder_minutes': task.reminder_minutes,
         'search_prompt': task.search_prompt, 'search_questions': task.search_questions, 'recurrence': task.recurrence,
-        'recurrence_start': task.recurrence_start})
+        'recurrence_start': task.recurrence_start, 'repeat_after_done': task.repeat_after_done})
     if created:
         copy_checklist(task, following)
     return following
@@ -248,6 +282,9 @@ def edit(request, kind, pk=None):
     initial = {}
     if not pk and kind == 'activity':
         initial = {'start_date': chosen_date(request), 'end_date': chosen_date(request)}
+    chore = kind == 'task' and request.GET.get('chore') == '1'
+    if not pk and chore:
+        initial.update(repeat='WEEKLY', due_date=timezone.localdate(timezone=ZoneInfo(request.household.timezone)))
     if not pk and kind == 'task' and request.GET.get('activity'):
         linked = get_object_or_404(Activity, pk=request.GET['activity'], household=request.household)
         initial['activity'] = linked.pk
@@ -270,7 +307,7 @@ def edit(request, kind, pk=None):
             form.save_m2m()
             bump(household)
         messages.success(request, f'{label.capitalize()} saved.')
-        return redirect('activity_detail', pk=item.pk) if kind == 'activity' else redirect('tasks' if kind == 'task' else 'family')
+        return redirect('activity_detail', pk=item.pk) if kind == 'activity' else redirect('chores' if chore else 'tasks' if kind == 'task' else 'family')
     extra = checklist_context('task', instance) if kind == 'task' and instance else {}
     return render(request, 'planner/edit.html', {'section': 'family' if kind == 'member' else 'tasks' if kind == 'task' else 'home', 'form': form, 'label': label, 'item': instance, 'kind': kind, 'zone': request.household.timezone, **extra})
 
@@ -404,7 +441,8 @@ def complete(request, pk):
     if following:
         message += f' Next due {following.due_date:%b} {following.due_date.day}.'
     messages.success(request, message)
-    return redirect('tasks' if request.POST.get('origin') == 'tasks' else 'home')
+    origin = request.POST.get('origin')
+    return redirect(origin if origin in ('tasks', 'chores') else 'home')
 
 @parent_only
 @require_http_methods(['GET', 'POST'])

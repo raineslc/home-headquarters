@@ -127,6 +127,32 @@ def next_date(rule, anchor, after):
     following = series.after(datetime.combine(after, datetime.min.time()), inc=False)
     return following.date() if following else None
 
+UNITS = {'DAILY': 'days', 'WEEKLY': 'weeks', 'MONTHLY': 'months', 'YEARLY': 'years'}
+
+def date_after_done(rule, done, due):
+    """Next due date for a task that repeats a set time after it's done: the rule's interval after
+    the completion day, never on or before the current due date, or None after the end date."""
+    from dateutil.relativedelta import relativedelta
+    parts = parse_parts(rule)
+    following = done + relativedelta(**{UNITS[parts['FREQ']]: int(parts.get('INTERVAL', '1'))})
+    if due:
+        following = max(following, due + timedelta(days=1))
+    if 'UNTIL' in parts and following > datetime.strptime(parts['UNTIL'], '%Y%m%d').date():
+        return None
+    return following
+
+def describe_after_done(rule):
+    parts = parse_parts(rule)
+    interval = int(parts.get('INTERVAL', '1'))
+    unit = {'DAILY': 'day', 'WEEKLY': 'week', 'MONTHLY': 'month', 'YEARLY': 'year'}[parts['FREQ']]
+    text = (f'Every {unit}' if interval == 1 else f'Every {interval} {unit}s') + ' after it’s done'
+    if 'UNTIL' in parts:
+        until = datetime.strptime(parts['UNTIL'], '%Y%m%d').date()
+        text += f', until {until:%b} {until.day}, {until.year}'
+    elif 'COUNT' in parts:
+        text += f', {parts["COUNT"]} times'
+    return text
+
 def first_on_or_after(rule, day):
     """The first date on or after `day` that matches the rule's pattern when anchored there."""
     return next_date(rule, day, day - timedelta(days=1))
