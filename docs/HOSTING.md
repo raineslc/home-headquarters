@@ -58,6 +58,8 @@ database (QA-04).
    `SCHEDULE="*/20 6-22 * * *" bash reminders-setup.sh home-headquarters-prod`.
 4. The deploy job updates (rather than replaces) the service's secrets and settings, so the
    reminder key and scheduler identity stay attached across deploys.
+5. The same call also refreshes shared Google calendars and retries failed family-calendar
+   updates (GGL-04), so no extra scheduler job is needed.
 
 ## Costs to watch
 

@@ -23,6 +23,12 @@ JOB_INVOKER_EMAIL identity are checked). Each run recomputes due reminders from 
 (so edits, deletes and completions reschedule or cancel them), sends each once per device
 (ReminderDelivery unique on device + reminder key; key includes the start time), commits per
 delivery, retries failures up to 3 runs and removes devices the push service reports gone.
+After reminders, the same call refreshes Google Calendar (GGL-04): google_service.sync_due
+re-snapshots each connected account's shared calendars not synced in the last 10 minutes
+(without bumping the connection version, so open forms stay valid; accounts needing reconnect
+are skipped and the owner sees an Overview notice), then google_writes.retry_failed retries
+pending Google removals and failed family-calendar updates (never conflicts or deletions made in
+Google). Errors there are logged and never fail the reminder run.
 
 ## Code map
 
@@ -154,4 +160,4 @@ accounts and connections are unchanged. Unknown authors fall back to the restori
 Version 1 notes-only exports still restore notes only. `manage.py export_household <file>`
 writes the same export for operators. A hosted isolated recovery drill is still pending.
 Source Git history and bundles cannot recover live household data. Phone reminders run from
-Cloud Scheduler (see above); scheduled Google sync while the app is closed does not exist yet.
+Cloud Scheduler, which also refreshes Google calendars (see above).

@@ -123,6 +123,8 @@ def dashboard(request):
     quick_context['assistant_ready'] = bool(app_settings.OPENAI_API_KEY)
     quick_context['quick_plan'] = quick_assistant_plan(request)
     quick_context['prep'] = tonights_prep(request)
+    from .models import GoogleConnection
+    quick_context['google_reconnect'] = GoogleConnection.objects.filter(household=request.household, owner=request.user, needs_reconnect=True).exists()
     if response is not None:
         return response
     day = chosen_date(request)

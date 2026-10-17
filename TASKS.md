@@ -140,6 +140,17 @@ participation. No further approval is needed merely to develop reversible local 
 - [ ] GGL-03 Melissa's own live connection/selected visibility and shared overview verification.
 - [ ] GGL-04 Scheduled sync while app closed, durable retries and operational monitoring.
   Confirm OAuth testing-mode expiry/reconnection and production consent requirements.
+  **Implemented (Claude Code, October 17; owner request).** The reminder scheduler call (every 15
+  minutes, 6 AM–11 PM Eastern) refreshes every connected account's shared calendars after sending
+  reminders (each at most every 10 minutes; unshared calendars never read), without changing the
+  connection version. A failed sync keeps the previous events and shows the error on the
+  connections page; an expired sign-in marks the account for reconnect, stops trying, and shows
+  the owner an Overview notice. Pending Google removals and failed family-calendar updates are
+  retried each run (up to 50 each); conflicts and Google-side deletions still wait for a parent.
+  Google errors never fail the reminder run; results are logged per run. Sync now remains for an
+  immediate refresh and to pick up newly added calendars. Pending: confirm on the live site,
+  and decide whether to publish the Google sign-in app (testing-mode sign-ins expire after about
+  7 days; publishing unverified shows a warning screen; verification may be required).
 - [x] LUN-01 Monthly weekday grid, children as editable profiles; School/Pack/No school/Not
   decided, multi-date/full-month application and version-protected undo. Leap-year CI coverage.
 - [x] LUN-02 School lunch selections appear on main calendar; packed-lunch needs appear in
@@ -281,15 +292,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: REM-03 hosted scheduler verified (owner ran the setup);
-  reminders-setup.sh now waits for its test run and reports success or the failing status.
-  PRs 19, 20 and 21 merged October 16; deploy of 06ee090 succeeded (health check passed).
-- Starting canonical GitHub commit: `06ee090a6ea7fd9adfc2590039ec0ad0039008c5` (merged PR 21); branch `rem-03-scheduler-verified`.
+- Assistant: Claude Code. Change: GGL-04 scheduled Google Calendar sync and write retries on the
+  existing reminder schedule (owner request).
+- Starting canonical GitHub commit: `5881936f1546b02d9716044c968da59df4406d1d` (merged PR 22); branch `ggl-04-scheduled-sync`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: script syntax-checked (bash -n); documentation-only otherwise.
-- Remaining blockers: real-phone reminder delivery with the app closed (REM-03); live flyer
-  check; Melissa's invitation and Google test-user access; hosted recovery drill.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 132 organizer
+  tests passed (5 new), migration drift check clean. CI status for the pushed branch is reported
+  in the handoff.
+- Remaining blockers: real-phone reminder check (REM-03); live check of scheduled Google sync;
+  Google sign-in publishing decision; Melissa's access; hosted recovery drill; weekly backup.
 
 ## Deferred until first release works
 
