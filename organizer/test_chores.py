@@ -76,6 +76,18 @@ class ChoreTests(TestCase):
         self.assertRedirects(response, '/chores/', fetch_redirect_response=False)
         self.assertContains(self.client.get('/chores/'), 'Done in the last 7 days (1)')
 
+    def test_tasks_page_hides_chores_unless_asked(self):
+        self.chore('Laundry', due=self.today, after=False)
+        Task.objects.create(household=self.house, title='Buy a gift', due_date=self.today)
+        page = self.client.get('/tasks/')
+        self.assertContains(page, 'Buy a gift')
+        self.assertNotContains(page, 'Laundry')
+        self.assertContains(page, 'Show chores (1)')
+        shown = self.client.get('/tasks/?status=all&chores=show')
+        self.assertContains(shown, 'Laundry')
+        self.assertContains(shown, 'href="?status=done&amp;chores=show"')
+        self.assertContains(shown, 'Hide chores')
+
     def test_empty_state_and_navigation(self):
         page = self.client.get('/chores/')
         self.assertContains(page, 'No chores yet')

@@ -234,7 +234,7 @@ class RecurringTaskTests(TestCase):
         self.client.post(f'/tasks/{task.pk}/complete/', {'version': 2})  # reopen
         self.client.post(f'/tasks/{task.pk}/complete/', {'version': 3})  # complete again
         self.assertEqual(Task.objects.count(), 2)
-        self.assertContains(self.client.get('/tasks/'), '⟳ Repeats')
+        self.assertContains(self.client.get('/tasks/?chores=show'), '⟳ Repeats')
 
     def test_series_end_and_skip_or_stop_on_delete(self):
         task = self.create_task(ends='count', count=2)

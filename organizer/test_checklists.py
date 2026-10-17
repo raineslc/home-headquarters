@@ -91,7 +91,7 @@ class ChecklistTests(TestCase):
         self.act('task', task, action='template', template=str(self.template.pk))
         towel = task.checklist_items.get(text='Towel')
         self.act('task', task, action='done', item=str(towel.pk))
-        self.assertContains(self.client.get('/tasks/'), '☑ 1/3')
+        self.assertContains(self.client.get('/tasks/?chores=show'), '☑ 1/3')
         self.assertContains(self.client.get(f'/plan/task/{task.pk}/edit/'), 'Goggles')
         self.client.post(f'/tasks/{task.pk}/complete/', {'version': task.version})
         following = Task.objects.get(series_key=task.series_key, due_date=date(2026, 10, 26))

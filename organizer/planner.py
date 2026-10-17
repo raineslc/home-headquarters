@@ -203,7 +203,13 @@ def tasks(request):
     query = Task.objects.filter(household=request.household).select_related('assignee', 'activity')
     if status != 'all':
         query = query.filter(completed_at__isnull=status != 'done')
-    return render(request, 'planner/tasks.html', {**quick_context, 'section': 'tasks', 'tasks': query, 'status': status, 'today': timezone.localdate(timezone=ZoneInfo(request.household.timezone))})
+    # Chores (repeating tasks) have their own tab, so they're hidden here unless asked for.
+    show_chores = request.GET.get('chores') == 'show'
+    hidden = 0 if show_chores else query.exclude(recurrence='').count()
+    if not show_chores:
+        query = query.filter(recurrence='')
+    return render(request, 'planner/tasks.html', {**quick_context, 'section': 'tasks', 'tasks': query, 'status': status, 'show_chores': show_chores,
+                                                  'hidden_chores': hidden, 'today': timezone.localdate(timezone=ZoneInfo(request.household.timezone))})
 
 @parent_only
 @require_GET
