@@ -248,7 +248,9 @@ participation. No further approval is needed merely to develop reversible local 
   removed; delivery rows older than 14 days are pruned. Migration 0011. 11 isolated tests.
 - [ ] REM-03 Verify real delivery while app/browser closed, failure retry and no duplicates;
   do not mark done based on an in-app message or run_jobs heartbeat.
-  Pending: owner runs reminders-setup.sh, turns on reminders on an Android phone, and confirms a
+  Hosted scheduler verified October 17: owner ran reminders-setup.sh; Cloud Scheduler calls at
+  14:45, 15:00 and 15:07 UTC were answered 200 by the app (signed-token check passing), job
+  ENABLED with empty status. Still pending: the owner turns on reminders on an Android phone, and confirms a
   test and a real scheduled reminder arrive with the app closed, once.
 
 ## 7. End-to-end release and handoff

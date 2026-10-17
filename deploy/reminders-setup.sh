@@ -59,9 +59,23 @@ gcloud scheduler jobs "$VERB" http hhq-reminders --location "$REGION" --schedule
   --oidc-service-account-email "$SCHEDULER" --oidc-token-audience "$URL"
 
 echo "Running it once now..."
+BEFORE=$(gcloud scheduler jobs describe hhq-reminders --location "$REGION" --format='value(lastAttemptTime)')
 gcloud scheduler jobs run hhq-reminders --location "$REGION"
-sleep 20
-gcloud scheduler jobs describe hhq-reminders --location "$REGION" --format='value(state,status.code,lastAttemptTime)'
+# Wait for the run to finish; before that the status is not meaningful (it can read -1).
+for attempt in $(seq 1 12); do
+  sleep 10
+  AFTER=$(gcloud scheduler jobs describe hhq-reminders --location "$REGION" --format='value(lastAttemptTime)')
+  [ -n "$AFTER" ] && [ "$AFTER" != "$BEFORE" ] && break
+done
+CODE=$(gcloud scheduler jobs describe hhq-reminders --location "$REGION" --format='value(status.code)')
+if [ -z "$AFTER" ] || [ "$AFTER" = "$BEFORE" ]; then
+  echo "The test run hasn't finished yet. Check later with:"
+  echo "  gcloud scheduler jobs describe hhq-reminders --location $REGION --format='yaml(status,lastAttemptTime)'"
+elif [ -z "$CODE" ] || [ "$CODE" = "0" ]; then
+  echo "Success: the app accepted the scheduler's call."
+else
+  echo "The app did not accept the call (status $CODE). Share this line and the next command's output:"
+  echo "  gcloud logging read 'resource.type=\"cloud_run_revision\" AND httpRequest.requestUrl:\"/jobs/reminders/\"' --limit 3 --format='value(timestamp,httpRequest.status)'"
+fi
 echo
-echo "Done. A status code of 0 (or blank) means the app accepted the call."
 echo "Next: on your phone open Settings → Phone reminders → Turn on reminders on this device → Send a test."
