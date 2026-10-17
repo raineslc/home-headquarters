@@ -248,8 +248,10 @@ participation. No further approval is needed merely to develop reversible local 
   removed; delivery rows older than 14 days are pruned. Migration 0011. 11 isolated tests.
 - [ ] REM-03 Verify real delivery while app/browser closed, failure retry and no duplicates;
   do not mark done based on an in-app message or run_jobs heartbeat.
-  Pending: owner runs reminders-setup.sh, turns on reminders on an Android phone, and confirms a
-  test and a real scheduled reminder arrive with the app closed, once.
+  Hosted scheduler verified October 17: owner ran reminders-setup.sh; Cloud Scheduler calls at
+  14:45, 15:00 and 15:07 UTC were answered 200 by the app (signed-token check passing), job
+  ENABLED with empty status. Still pending: the owner turns on reminders on an Android phone
+  and confirms a test and a real scheduled reminder arrive with the app closed, once.
 
 ## 7. End-to-end release and handoff
 
@@ -279,15 +281,15 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: AI-10 snap a flyer (stacked on REM-01 phone reminders, PR 20).
-- Starting canonical GitHub commit: `67a12ebe56426b943f3255708c06bbcf4907324e` (branch rem-01-push-reminders, PR 20); branch `ai-10-snap-a-flyer`.
+- Assistant: Claude Code. Change: REM-03 hosted scheduler verified (owner ran the setup);
+  reminders-setup.sh now waits for its test run and reports success or the failing status.
+  PRs 19, 20 and 21 merged October 16; deploy of 06ee090 succeeded (health check passed).
+- Starting canonical GitHub commit: `06ee090a6ea7fd9adfc2590039ec0ad0039008c5` (merged PR 21); branch `rem-03-scheduler-verified`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 127 organizer
-  tests passed (5 new), migration drift check clean; phone-width check of the Overview tile and
-  on-phone photo shrinking. CI status for the pushed branch is reported in the handoff.
-- Remaining blockers: owner runs deploy/reminders-setup.sh and verifies a phone reminder
-  (REM-03); live flyer check; hosted recovery drill; second-parent participation.
+- Validation: script syntax-checked (bash -n); documentation-only otherwise.
+- Remaining blockers: real-phone reminder delivery with the app closed (REM-03); live flyer
+  check; Melissa's invitation and Google test-user access; hosted recovery drill.
 
 ## Deferred until first release works
 
