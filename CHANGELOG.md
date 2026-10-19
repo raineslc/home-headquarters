@@ -4,6 +4,16 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-19 — Fix: joining as the second parent gave 403 Forbidden
+
+- Author: Claude Code. Task: FAM-02.
+- The join page told browsers not to send referrer information, which makes them submit the
+  form with "Origin: null"; Django's form-safety check then refused it. The invitation code is
+  already removed from the address by then, so the join page now uses the normal site policy;
+  only the invitation-link redirect and the Google callback still hide the referrer.
+- New regression test submits the form like a browser (HTTPS, CSRF enforced, Origin header).
+- Also recorded: the owner's phone received the reminder test notification (REM-03 partial).
+
 ## 2026-10-17 — Chores and the Tasks & chores summary
 
 - Author: Claude Code. Task: TSK-03 (owner request).
