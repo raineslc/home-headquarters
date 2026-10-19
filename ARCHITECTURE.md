@@ -28,7 +28,10 @@ re-snapshots each connected account's shared calendars not synced in the last 10
 (without bumping the connection version, so open forms stay valid; accounts needing reconnect
 are skipped and the owner sees an Overview notice), then google_writes.retry_failed retries
 pending Google removals and failed family-calendar updates (never conflicts or deletions made in
-Google). Errors there are logged and never fail the reminder run.
+Google). Errors there are logged and never fail the reminder run. Last, organizer/backups.py
+saves the weekly household export to Cloud Storage (BACKUP_BUCKET; Sunday from 9 PM, or whenever
+the last good backup is over 8 days old) using the runtime account's create-only permission and
+an ifGenerationMatch=0 upload; BackupRun records each attempt.
 
 ## Code map
 

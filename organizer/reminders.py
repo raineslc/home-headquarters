@@ -158,7 +158,17 @@ def reminders_job(request):
     log.warning('Reminder run: %(sent)s sent, %(failed)s failed', result)
     result['google'] = google_due()
     log.warning('Google sync run: %(synced)s synced, %(failed)s failed, %(retried)s retried', result['google'])
+    result['backup'] = backup_due()
     return JsonResponse(result)
+
+def backup_due():
+    """Weekly backup (FND-03). Never fails the scheduler run."""
+    from . import backups
+    try:
+        return backups.backup_due()
+    except Exception:  # noqa: BLE001
+        log.exception('Scheduled backup failed')
+        return {'saved': 0, 'failed': 1}
 
 def device_label(request):
     agent = request.headers.get('User-Agent', '')

@@ -312,3 +312,16 @@ class ReminderDelivery(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['subscription', 'key'], name='one_delivery_per_device_reminder')]
+
+class BackupRun(models.Model):
+    """One automatic or on-demand backup attempt to Cloud Storage (FND-03)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    object_name = models.CharField(max_length=300)
+    size = models.PositiveIntegerField(default=0)
+    error = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']

@@ -4,6 +4,19 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-19 — Weekly automatic backup
+
+- Author: Claude Code. Task: FND-03 (owner request).
+- Every Sunday evening the full household export is saved to a private Google Cloud Storage
+  bucket and kept for 12 weeks; a missed week is caught up automatically. The app can add backups
+  but can't read, replace or delete them.
+- Settings → Open backup and restore shows the last backup, any failure, and Back up now.
+- One-time setup: `bash backup-setup.sh home-headquarters-prod` in Cloud Shell. No new
+  scheduler job; it runs with reminders and Google sync.
+- Validation: 145 organizer tests (6 new: schedule and catch-up, valid export saved under a
+  dated name, create-only upload request, failures shown, Back up now and scheduler run, off
+  until set up).
+
 ## 2026-10-19 — Second parent set up; fridge display planned
 
 - Author: Claude Code. Documentation only.

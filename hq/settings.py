@@ -83,6 +83,8 @@ OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-5-mini')
 WEB_PUSH_PRIVATE_KEY = os.getenv('WEB_PUSH_PRIVATE_KEY', '')
 WEB_PUSH_CONTACT = os.getenv('WEB_PUSH_CONTACT', 'https://' + os.getenv('APP_HOSTNAME', 'localhost'))
 JOB_INVOKER_EMAIL = os.getenv('JOB_INVOKER_EMAIL', '').strip().lower()
+# Weekly automatic backup (FND-03): the private Cloud Storage bucket; empty turns it off.
+BACKUP_BUCKET = os.getenv('BACKUP_BUCKET', '').strip()
 APP_HOSTNAME = os.getenv('APP_HOSTNAME', '')
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'https://home-headquarters-140747200253.us-east4.run.app/connections/google/callback/')
 LOGGING = {'version': 1, 'disable_existing_loggers': False,

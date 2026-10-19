@@ -518,7 +518,8 @@ def settings(request):
     from .version import info
     from . import webpush
     from .models import PushSubscription
-    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household, 'version': info(),
+    from .views import backup_context
+    return render(request, 'planner/settings.html', {'section': 'settings', 'household': request.household, 'version': info(), **backup_context(request.household),
                                                      'push_key': webpush.public_key(),
                                                      'devices': PushSubscription.objects.filter(household=request.household).select_related('user').order_by('created_at')})
 
