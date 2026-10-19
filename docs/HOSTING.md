@@ -61,13 +61,26 @@ database (QA-04).
 5. The same call also refreshes shared Google calendars and retries failed family-calendar
    updates (GGL-04), so no extra scheduler job is needed.
 
+## Weekly automatic backup (FND-03)
+
+1. In Cloud Shell, upload `deploy/backup-setup.sh` and run `bash backup-setup.sh home-headquarters-prod`.
+   It creates the private bucket `home-headquarters-prod-hhq-backups` in us-east1, deletes files
+   after 12 weeks, gives the app create-only access and sets BACKUP_BUCKET on the service.
+2. The first backup is saved within about 15 minutes (6 AM–11 PM Eastern), then every Sunday from
+   9 PM. Settings → Open backup and restore shows the last one and has Back up now.
+3. To restore: open the bucket in the Cloud console, download the newest
+   `home-headquarters-YYYY-MM-DD-HHMM.json`, then use Preview a restore. The app cannot read,
+   replace or delete backups, so a problem in the app can't erase them.
+
 ## Costs to watch
 
 Cloud Run, Secret Manager and Artifact Registry have monthly free allowances that one family
 should stay well inside; Neon's free plan has no expiry. Prices and allowances change, so the
 budget alert is the safety net. Any paid upgrade needs the owner's approval.
 
-Reminders: Cloud Scheduler gives 3 free jobs per billing account (this uses one). Each run
+Backups: a few small files in us-east1, well inside the 5 GB free storage allowance; copying
+them from us-east4 costs a fraction of a cent. Reminders: Cloud Scheduler gives 3 free jobs per
+billing account (this uses one; backups and Google sync share it). Each run
 wakes the Neon database, which then stays on about 5 minutes; every 15 minutes for 17 hours a
 day is roughly 40–45 of Neon's free monthly compute hours (100 per project at the time of
 writing; check Neon → Usage). If usage gets close, slow the schedule (step 3 above).

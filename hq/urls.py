@@ -7,6 +7,7 @@ from organizer import assistant
 from organizer import pwa
 from organizer import checklists
 from organizer import reminders
+from organizer import backups
 
 urlpatterns = [
     path('assistant/', assistant.index, name='assistant'),
@@ -58,6 +59,7 @@ urlpatterns = [
     path('foundation/', views.home, name='foundation'),
     path('foundation/records/', views.records, name='records'),
     path('foundation/export/', views.export, name='export'),
+    path('foundation/backup/', backups.backup_now, name='backup_now'),
     path('foundation/restore/', views.restore, name='restore'),
     path('foundation/recovery/', views.recovery_points, name='recovery'),
     path('foundation/recovery/<uuid:point_id>/', views.recovery_download, name='recovery_download'),

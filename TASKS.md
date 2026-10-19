@@ -15,9 +15,9 @@ Both assistants MUST update this file and CHANGELOG.md after changes; see AGENTS
 
 ## Next work and blockers
 
-1. **FND-03 / REC-01:** hosting moved to Cloud Run + Neon (October 16). Remaining: backup routine,
-   and the recovery drill (the Render-to-Neon copy already proved a full database restore).
-2. **FAM-02:** verify Melissa's separate account/invitation and own calendar consent when available.
+1. **FND-03 / REC-01:** hosting moved to Cloud Run + Neon (October 16); weekly backup implemented
+   (owner runs deploy/backup-setup.sh). Remaining: first live backup, and the recovery drill.
+2. **GGL-03:** confirm Melissa's own Google connection and shared calendars.
 3. **GGL-02** live setup (add the calendar.app.created scope in Google Cloud, deploy, one parent opts in) and AI-04 live run.
 4. **REM-01–03:** choose delivery and scheduler, obtain any paid-service approval, then build
    and verify closed-app delivery. Continue remaining release gates below in dependency order.
@@ -40,8 +40,16 @@ participation. No further approval is needed merely to develop reversible local 
   ran setup (project home-headquarters-prod), copied the database (all 14 table counts matched),
   first Cloud Run deploy succeeded (run 38930083618, f28fc59), new OAuth client and Google
   reconnect verified, owner switched to https://home-headquarters-140747200253.us-east4.run.app; no further copy needed.
-  Remaining: backup routine/retention decision (proposed weekly export to Cloud Storage), budget
-  alert confirmation, suspend Render web service; Render database expires November 11.
+  Backup (owner request, Claude Code, October 19): the scheduler run saves the full household
+  export to the private bucket <project>-hhq-backups (us-east1, free storage region) every Sunday
+  from 9 PM household time, and catches up whenever the last good backup is over 8 days old;
+  failed attempts retry after an hour. The app's account has objectCreator only (create, no
+  read/replace/delete) and uploads with ifGenerationMatch=0; a lifecycle rule deletes backups after
+  84 days (12 weeks). Backup and restore shows the last backup, any failure, and Back up now;
+  Settings shows the status. Restore = download from Cloud Storage, then Preview a restore.
+  Setup: deploy/backup-setup.sh. Migration 0013. Neon's own short history is a separate safety net.
+  Remaining: owner runs the setup and confirms the first backup; budget alert confirmation;
+  suspend Render web service; Render database expires November 11.
 - [ ] REC-01 Versioned export of **all** household organizer data, validated restore with
   recovery point before replacement, conflict handling and isolated-environment recovery drill.
   **Implemented, hosted drill pending (Claude Code).** Export format version 2 covers notes,
@@ -315,15 +323,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: documentation only. FAM-02 marked done (Melissa set up after
-  the join fix, PR 25); DISP-01 kitchen/fridge display recorded as planned for later.
-- Starting canonical GitHub commit: `c462b1d310b51b8fe5489247d5cb87c3438c91c4` (merged PR 25); branch `docs-fridge-and-fam02`.
+- Assistant: Claude Code. Change: FND-03 weekly automatic backup to Cloud Storage on the existing
+  scheduler run, with Back up now and status on Backup and restore and Settings.
+- Starting canonical GitHub commit: `c72a968e76f7f1f888f1a582bb1a66f4e5098135` (merged PR 26); branch `fnd-03-weekly-backup`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: documentation only; no code changed.
-- Remaining blockers: Melissa's Google connection check (GGL-03); scheduled phone reminder with
-  the app closed (REM-03); live Google sync check; family Google calendar setup (GGL-02); hosted
-  recovery drill; weekly backup.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 145 organizer
+  tests passed (6 new), migration drift check clean, setup script syntax-checked. CI status is
+  reported in the handoff.
+- Remaining blockers: owner runs deploy/backup-setup.sh and confirms the first backup; recovery
+  drill; GGL-03; scheduled phone reminder with the app closed (REM-03); live Google sync check.
 
 ## Planned for later (owner, October 19)
 

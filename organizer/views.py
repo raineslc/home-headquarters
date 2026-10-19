@@ -111,7 +111,15 @@ def home(request):
         'records': SetupRecord.objects.filter(household=request.household).order_by('-created_at')[:100],
         'form': RecordForm(),
         'last_job': JobRun.objects.filter(status='complete').order_by('-completed_at').first(),
+        **backup_context(request.household),
     })
+
+def backup_context(household):
+    from django.conf import settings
+    from .models import BackupRun
+    runs = BackupRun.objects.filter(household=household)
+    return {'backup_on': bool(settings.BACKUP_BUCKET), 'last_backup': runs.filter(error='', finished_at__isnull=False).first(),
+            'last_backup_attempt': runs.first()}
 
 @parent_only
 @require_POST

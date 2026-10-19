@@ -163,3 +163,8 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Live: Melissa's join submit returned 403 Forbidden. The live /join/ response carried Referrer-Policy: no-referrer (checked with curl), which makes browsers send Origin: null on form submit; Django's CSRF origin check rejects that.
 - Regression test with Client(enforce_csrf_checks=True) over HTTPS: the invite redirect keeps no-referrer, the join page no longer does, a submit with Origin: null is refused (403) and one with the site's origin creates the account. The test fails with the old middleware and passes with the fix; 139 organizer tests passed.
 - Owner's Android phone received the Send a test notification from the live site (October 19). A scheduled reminder with the app closed is still to be confirmed.
+
+## Weekly automatic backup (FND-03), October 19, 2026 — Claude Code
+
+- Six isolated PostgreSQL tests with Cloud Storage mocked: due when never backed up, not on Saturday or before 9 PM Sunday, due at 9 PM Sunday, once per Sunday, catch-up after 8 days, a failed attempt waits an hour; the saved file is a valid export named <household>/home-headquarters-2026-10-25-2105.json; the upload request uses ifGenerationMatch=0 and a non-200 answer raises; failures show on both pages; Back up now and the scheduler run; nothing happens without BACKUP_BUCKET. 145 organizer tests passed.
+- Not yet verified live: bucket setup and the first real backup.
