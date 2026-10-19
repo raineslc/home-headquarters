@@ -73,6 +73,11 @@ participation. No further approval is needed merely to develop reversible local 
 - [ ] FAM-02 Separate parent accounts via secure invitations: implementation and isolated tests
   complete; verify Melissa's live join/sign-in and shared editing. Invitations are email-bound
   bearer links; no email delivery/verification is currently implemented. Share only as authorized.
+  October 19: Melissa's first join attempt failed with 403 Forbidden. Cause: the join page sent
+  Referrer-Policy: no-referrer, so browsers submitted the form with "Origin: null" and Django's
+  CSRF origin check rejected it. Fixed: only the invitation-link redirect (the address with the
+  secret) and the Google callback hide the referrer; regression test uses an HTTPS, CSRF-enforcing
+  client. Pending: Melissa joins with a fresh invitation after the deploy.
 
 ## 3. Calendar, tasks and preparation relationships
 
@@ -277,8 +282,9 @@ participation. No further approval is needed merely to develop reversible local 
   do not mark done based on an in-app message or run_jobs heartbeat.
   Hosted scheduler verified October 17: owner ran reminders-setup.sh; Cloud Scheduler calls at
   14:45, 15:00 and 15:07 UTC were answered 200 by the app (signed-token check passing), job
-  ENABLED with empty status. Still pending: the owner turns on reminders on an Android phone
-  and confirms a test and a real scheduled reminder arrive with the app closed, once.
+  ENABLED with empty status. October 19: owner turned on reminders on an Android phone and the
+  test notification arrived. Still pending: a real scheduled reminder arriving once with the app
+  closed.
 
 ## 7. End-to-end release and handoff
 
@@ -308,16 +314,16 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: TSK-03 Chores tab, "repeat after it's done" tasks and chores
-  hidden on Tasks by default; DASH-06 Overview Tasks & chores summary; export version 5.
-- Starting canonical GitHub commit: `d0b4d0254ff4d1cfcc81d85bf8d3e67cea266011` (merged PR 23); branch `tsk-03-chores`.
+- Assistant: Claude Code. Change: FAM-02 fix for the 403 on the parent join form (referrer
+  policy made browsers send Origin: null); REM-03 phone test notification recorded.
+- Starting canonical GitHub commit: `41426e70647c135b0671640bb2f2b212e11f3010` (merged PR 24); branch `fam-02-join-csrf-fix`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 138 organizer
-  tests passed (6 new, 6 updated), migration drift check clean; phone and desktop checks of the
-  Chores tab, the repeat-mode form and the Overview summary. CI status is reported in the handoff.
-- Remaining blockers: real-phone reminder check (REM-03); live check of scheduled Google sync;
-  Melissa's access; hosted recovery drill; weekly backup.
+- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 139 organizer
+  tests passed (1 new; it fails without the fix). CI status is reported in the handoff.
+- Remaining blockers: Melissa joins with a fresh invitation and is added as a Google test user;
+  scheduled phone reminder with the app closed (REM-03); live Google sync check; hosted recovery
+  drill; weekly backup.
 
 ## Deferred until first release works
 

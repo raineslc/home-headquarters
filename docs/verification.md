@@ -157,3 +157,9 @@ OWNER_EMAIL was omitted during the initial Blueprint setup. It was added through
 - Local phone-width (375px) check with sample chores: seven bottom tabs fit, no sideways scroll; on the edit form, weekdays hide in after-done mode and return for a schedule.
 - Tasks page: chores hidden by default with a count, shown with ?chores=show, and the status filters keep the choice (new test).
 - Overview Tasks & chores (DASH-06): the updated test checks non-overlapping counts (overdue 1, today 2 including a chore, next 7 days 2, high 2), tasks and chores listed separately, done-this-week counts, each filter's lists and the empty message. Phone and desktop screenshots on local test data; no sideways scroll.
+
+## Parent join 403 fix (FAM-02) and phone test notification (REM-03), October 19, 2026 — Claude Code
+
+- Live: Melissa's join submit returned 403 Forbidden. The live /join/ response carried Referrer-Policy: no-referrer (checked with curl), which makes browsers send Origin: null on form submit; Django's CSRF origin check rejects that.
+- Regression test with Client(enforce_csrf_checks=True) over HTTPS: the invite redirect keeps no-referrer, the join page no longer does, a submit with Origin: null is refused (403) and one with the site's origin creates the account. The test fails with the old middleware and passes with the fix; 139 organizer tests passed.
+- Owner's Android phone received the Send a test notification from the live site (October 19). A scheduled reminder with the app closed is still to be confirmed.

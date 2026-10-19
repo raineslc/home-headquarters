@@ -147,6 +147,24 @@ class GoogleTests(TestCase):
         self.client.get(link)
         self.assertEqual(self.client.get('/join/').status_code, 400)
 
+    def test_join_form_submits_like_a_real_browser(self):
+        # Regression (October 19): the join page sent Referrer-Policy: no-referrer, so browsers
+        # submitted the form with "Origin: null" and the CSRF check answered 403 Forbidden.
+        link = self.client.post('/settings/parents/', {'email': 'invited@example.test'}).context['invitation_link']
+        browser = Client(enforce_csrf_checks=True)
+        path = link[link.index('/join/'):]
+        redirect = browser.get(path, secure=True)
+        self.assertEqual(redirect['Referrer-Policy'], 'no-referrer')  # the address with the secret
+        page = browser.get('/join/', secure=True)
+        self.assertEqual(page.status_code, 200)
+        self.assertNotEqual(page.get('Referrer-Policy'), 'no-referrer')
+        token = page.context['csrf_token']
+        data = {'csrfmiddlewaretoken': token, 'name': 'Partner', 'password': 'fixture-M7v2-long-passphrase', 'password_confirm': 'fixture-M7v2-long-passphrase'}
+        self.assertEqual(browser.post('/join/', data, secure=True, HTTP_ORIGIN='null').status_code, 403)  # what no-referrer caused
+        response = browser.post('/join/', data, secure=True, HTTP_ORIGIN='https://testserver')
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(get_user_model().objects.filter(username='invited@example.test').exists())
+
     def test_expired_invitation_and_cancelled_oauth(self):
         self.client.post('/connections/google/connect/')
         state = self.client.session['google_oauth']['state']
