@@ -70,14 +70,14 @@ participation. No further approval is needed merely to develop reversible local 
 ## 2. Shared household and family
 
 - [x] FAM-01 Create/edit/archive profiles, roles, initials and colors; household-scoped parent access.
-- [ ] FAM-02 Separate parent accounts via secure invitations: implementation and isolated tests
+- [x] FAM-02 Separate parent accounts via secure invitations: implementation and isolated tests
   complete; verify Melissa's live join/sign-in and shared editing. Invitations are email-bound
   bearer links; no email delivery/verification is currently implemented. Share only as authorized.
   October 19: Melissa's first join attempt failed with 403 Forbidden. Cause: the join page sent
   Referrer-Policy: no-referrer, so browsers submitted the form with "Origin: null" and Django's
   CSRF origin check rejected it. Fixed: only the invitation-link redirect (the address with the
   secret) and the Google callback hide the referrer; regression test uses an HTTPS, CSRF-enforcing
-  client. Pending: Melissa joins with a fresh invitation after the deploy.
+  client. Owner reported Melissa set up after the fix (October 19); live join verified.
 
 ## 3. Calendar, tasks and preparation relationships
 
@@ -154,6 +154,7 @@ participation. No further approval is needed merely to develop reversible local 
   Cloud consent screen, deploy, set up the calendar, and verify a real create/edit/delete and
   sharing with the other parent. Edits made in Google are not copied back (by design).
 - [ ] GGL-03 Melissa's own live connection/selected visibility and shared overview verification.
+  Melissa's account exists (October 19); confirm her Google connection and shared calendars.
 - [ ] GGL-04 Scheduled sync while app closed, durable retries and operational monitoring.
   Confirm OAuth testing-mode expiry/reconnection and production consent requirements.
   **Implemented (Claude Code, October 17; owner request).** The reminder scheduler call (every 15
@@ -314,16 +315,26 @@ participation. No further approval is needed merely to develop reversible local 
 
 ## Latest handoff
 
-- Assistant: Claude Code. Change: FAM-02 fix for the 403 on the parent join form (referrer
-  policy made browsers send Origin: null); REM-03 phone test notification recorded.
-- Starting canonical GitHub commit: `41426e70647c135b0671640bb2f2b212e11f3010` (merged PR 24); branch `fam-02-join-csrf-fix`.
+- Assistant: Claude Code. Change: documentation only. FAM-02 marked done (Melissa set up after
+  the join fix, PR 25); DISP-01 kitchen/fridge display recorded as planned for later.
+- Starting canonical GitHub commit: `c462b1d310b51b8fe5489247d5cb87c3438c91c4` (merged PR 25); branch `docs-fridge-and-fam02`.
 - Outgoing commit: the commit that adds this handoff entry; obtain exact SHA from the handoff
   message or `git log -1 --format=%H -- TASKS.md`. Never put a guessed self-referential SHA here.
-- Validation: local isolated PostgreSQL (portable PostgreSQL 16, Python 3.11): 139 organizer
-  tests passed (1 new; it fails without the fix). CI status is reported in the handoff.
-- Remaining blockers: Melissa joins with a fresh invitation and is added as a Google test user;
-  scheduled phone reminder with the app closed (REM-03); live Google sync check; hosted recovery
-  drill; weekly backup.
+- Validation: documentation only; no code changed.
+- Remaining blockers: Melissa's Google connection check (GGL-03); scheduled phone reminder with
+  the app closed (REM-03); live Google sync check; family Google calendar setup (GGL-02); hosted
+  recovery drill; weekly backup.
+
+## Planned for later (owner, October 19)
+
+- [ ] DISP-01 Kitchen display for the Samsung Family Hub fridge (or any tablet). Tabled by the
+  owner; wanted later. Proposed: a full-screen page with device pairing by a short code from a
+  signed-in phone (no password typed on the fridge), a long-lived, revocable display session
+  listed in Settings, large glanceable layout (today and the next days' plans including shared
+  Google calendars, chores due today by person, lunches, Tonight's prep after 5 PM), automatic
+  refresh, and no settings/assistant history. Open questions: view-only or tap to complete
+  chores/checklist items; fridge model/year (browser capability). Meanwhile the fridge's own
+  Calendar app can show activities once the family Google calendar (GGL-02) is set up.
 
 ## Deferred until first release works
 
