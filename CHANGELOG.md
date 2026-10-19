@@ -4,6 +4,13 @@ Both ChatGPT/Codex and Claude Code must update this file and TASKS.md after ever
 Entries describe the final change, task IDs, validation and limitations. New entries go first.
 The containing Git commit identifies an entry; do not invent its own SHA before committing.
 
+## 2026-10-19 — Second parent set up; fridge display planned
+
+- Author: Claude Code. Documentation only.
+- FAM-02 done: the owner reported Melissa's account set up after the join fix.
+- DISP-01 recorded for later: a kitchen display mode for the Samsung Family Hub fridge or a
+  tablet (pairing code, long-lived revocable session, large auto-refreshing layout).
+
 ## 2026-10-19 — Fix: joining as the second parent gave 403 Forbidden
 
 - Author: Claude Code. Task: FAM-02.
